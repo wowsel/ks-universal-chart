@@ -9,12 +9,14 @@ metadata:
   labels:
     {{- include "ks-universal.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $deploymentName }}
-  {{- with $defaultedConfig.annotations }}
+  {{- if $defaultedConfig.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    {{- toYaml $defaultedConfig.annotations | nindent 4 }}
   {{- end }}
 spec:
-  replicas: {{ $defaultedConfig.replicas | default 1 }}
+  {{- if and (not $deploymentConfig.hpa) $defaultedConfig.replicas }}
+  replicas: {{ $defaultedConfig.replicas }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 6 }}
@@ -22,50 +24,36 @@ spec:
     metadata:
       labels:
         {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 8 }}
-      {{- with $defaultedConfig.podAnnotations }}
+      {{- if $defaultedConfig.podAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml $defaultedConfig.podAnnotations | nindent 8 }}
       {{- end }}
     spec:
-      {{- with $.Values.generic.extraImagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
+      {{- if $deploymentConfig.serviceAccount }}
+      serviceAccountName: {{ $deploymentName }}
       {{- end }}
-      {{- with $defaultedConfig.securityContext }}
+      {{- if and $.Values.generic (hasKey $.Values.generic "extraImagePullSecrets") }}
+      imagePullSecrets:
+        {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.securityContext }}
       securityContext:
-        {{- toYaml . | nindent 8 }}
+        {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
       containers:
-        {{- range $containerName, $container := $defaultedConfig.containers }}
-        {{- include "ks-universal.validateContainer" (dict "container" $container "name" $containerName) }}
-        - name: {{ $containerName }}
-          image: {{ $container.image }}:{{ $container.imageTag }}
-          {{- if or $container.env $container.envFrom }}
-          {{- if $container.envFrom }}
-          envFrom:
-            {{- range $container.envFrom }}
-            - {{ .type }}Ref:
-                name: {{ include "ks-universal.configName" (dict "root" $ "name" .configName) }}
-            {{- end }}
-          {{- end }}
-          {{- if $container.env }}
-          env:
-            - name: {{ $container.env.name }}
-              value: {{ $container.env.value | quote }}
-          {{- end }}
-          {{- end }}
-          {{- with $container.ports }}
-          ports:
-            {{- range $portName, $port := . }}
-            - name: {{ $portName }}
-              containerPort: {{ $port.containerPort }}
-              protocol: {{ $port.protocol | default "TCP" }}
-            {{- end }}
-          {{- end }}
-          {{- with $container.resources }}
-          resources:
-            {{- toYaml . | nindent 12 }}
-          {{- end }}
-        {{- end }}
+      {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
+      {{- $affinity := include "ks-universal.processAffinity" (dict "config" $defaultedConfig "deploymentName" $deploymentName "general" $.Values.deploymentsGeneral) | fromYaml }}
+      {{- if $affinity }}
+      affinity:
+        {{- toYaml $affinity | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.nodeSelector }}
+      nodeSelector:
+        {{- toYaml $defaultedConfig.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.tolerations }}
+      tolerations:
+        {{- toYaml $defaultedConfig.tolerations | nindent 8 }}
+      {{- end }}
 {{- end }}
 {{- end }}

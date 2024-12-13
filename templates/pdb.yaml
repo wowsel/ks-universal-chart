@@ -1,0 +1,23 @@
+# pdb.yaml
+{{- range $deploymentName, $deploymentConfig := .Values.deployments }}
+{{- if $deploymentConfig.pdb }}
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $deploymentName }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 6 }}
+  {{- if $deploymentConfig.pdb.minAvailable }}
+  minAvailable: {{ $deploymentConfig.pdb.minAvailable }}
+  {{- end }}
+  {{- if $deploymentConfig.pdb.maxUnavailable }}
+  maxUnavailable: {{ $deploymentConfig.pdb.maxUnavailable }}
+  {{- end }}
+{{- end }}
+{{- end }}

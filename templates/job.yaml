@@ -1,0 +1,79 @@
+{{/* Обработка обычных jobs */}}
+{{- range $jobName, $jobConfig := .Values.jobs }}
+{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $jobName }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $jobName }}
+  {{- with $defaultedConfig.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $defaultedConfig.activeDeadlineSeconds }}
+  activeDeadlineSeconds: {{ $defaultedConfig.activeDeadlineSeconds }}
+  {{- end }}
+  {{- if $defaultedConfig.backoffLimit }}
+  backoffLimit: {{ $defaultedConfig.backoffLimit }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "ks-universal.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $jobName }}
+      {{- with $defaultedConfig.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      restartPolicy: {{ $defaultedConfig.restartPolicy | default "Never" }}
+      {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets (not (empty $.Values.generic.extraImagePullSecrets)) }}
+      imagePullSecrets:
+        {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
+{{- end }}
+
+{{/* Обработка миграций */}}
+{{- range $deploymentName, $deploymentConfig := .Values.deployments }}
+{{- if and $deploymentConfig.migrations (hasKey $deploymentConfig.migrations "enabled") $deploymentConfig.migrations.enabled }}
+{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ $deploymentName }}-migrations
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $deploymentName }}-migrations
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-5"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: {{ $deploymentConfig.migrations.backoffLimit | default 1 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ks-universal.labels" $ | nindent 8 }}
+        app.kubernetes.io/component: {{ $deploymentName }}-migrations
+    spec:
+      restartPolicy: Never
+      {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets (not (empty $.Values.generic.extraImagePullSecrets)) }}
+      imagePullSecrets:
+        {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- $containersWithArgs := dict }}
+        {{- range $containerName, $container := $defaultedConfig.containers }}
+        {{- $newContainer := merge $container (dict "args" $deploymentConfig.migrations.args) }}
+        {{- $_ := set $containersWithArgs $containerName $newContainer }}
+        {{- end }}
+        {{- include "ks-universal.containers" (dict "root" $ "containers" $containersWithArgs) | nindent 8 }}
+{{- end }}
+{{- end }}

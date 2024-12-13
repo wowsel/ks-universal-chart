@@ -1,147 +1,157 @@
 ---
-# Source: ks-universal/templates/configs.yaml
-apiVersion: v1
-kind: Secret
-metadata:
-  name: mychart-db-credentials
-  labels:
-    helm.sh/chart: ks-universal-0.1.0
-    app.kubernetes.io/name: mychart
-    app.kubernetes.io/instance: mychart
-    app.kubernetes.io/managed-by: Helm
-type: Opaque
-data:
-  DB_PASSWORD: c3VwZXJzZWNyZXQ=
----
-# Source: ks-universal/templates/configs.yaml
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: mychart-postgres-config
-  labels:
-    helm.sh/chart: ks-universal-0.1.0
-    app.kubernetes.io/name: mychart
-    app.kubernetes.io/instance: mychart
-    app.kubernetes.io/managed-by: Helm
-data:
-  DB_HOST: "postgres"
-  DB_PORT: "5432"
----
-# Source: ks-universal/templates/auto-services.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: example-deployment
-  labels:
-    helm.sh/chart: ks-universal-0.1.0
-    app.kubernetes.io/name: mychart
-    app.kubernetes.io/instance: mychart
-    app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: example-deployment
-spec:
-  type: ClusterIP
-  ports:
-    - name: http
-      port: 80
-      protocol: TCP
-      targetPort: 80
-  selector:
-    app.kubernetes.io/name: example-deployment
-    app.kubernetes.io/instance: mychart
----
 # Source: ks-universal/templates/service.yaml
 apiVersion: v1
 kind: Service
 metadata:
-  name: serviceName1
+  name: myservice
   labels:
     helm.sh/chart: ks-universal-0.1.0
     app.kubernetes.io/name: mychart
     app.kubernetes.io/instance: mychart
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: serviceName1
+    app.kubernetes.io/component: myservice
 spec:
   type: ClusterIP
   ports:
     - name: http
       port: 80
-      targetPort: 3000
+      targetPort: 8080
       protocol: TCP
   selector:
-    app.kubernetes.io/name: serviceName1
+    app.kubernetes.io/name: myservice
     app.kubernetes.io/instance: mychart
 ---
 # Source: ks-universal/templates/deployment.yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: example-deployment
+  name: myapp
   labels:
     helm.sh/chart: ks-universal-0.1.0
     app.kubernetes.io/name: mychart
     app.kubernetes.io/instance: mychart
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: example-deployment
+    app.kubernetes.io/component: myapp
 spec:
-  replicas: 1
+  replicas: 2
   selector:
     matchLabels:
-      app.kubernetes.io/name: example-deployment
+      app.kubernetes.io/name: myapp
       app.kubernetes.io/instance: mychart
   template:
     metadata:
       labels:
-        app.kubernetes.io/name: example-deployment
+        app.kubernetes.io/name: myapp
         app.kubernetes.io/instance: mychart
     spec:
-      securityContext:
-        runAsGroup: 1000
-        runAsNonRoot: true
-        runAsUser: 1000
+      imagePullSecrets:
+        {}
       containers:
-        - name: app
+        
+        
+        
+        - name: main
           image: nginx:latest
-          envFrom:
-            - configmapRef:
-                name: mychart-postgres-config
-            - secretRef:
-                name: mychart-db-credentials
-          env:
-            - name: value1
-              value: "value1-value"
           ports:
             - name: http
-              containerPort: 80
+              containerPort: 8080
               protocol: TCP
-          resources:
-            limits:
-              cpu: 100m
-              memory: 128Mi
-            requests:
-              cpu: 100m
-              memory: 128Mi
+            - name: http-metrics
+              containerPort: 9090
+              protocol: TCP
+          env:
+            - name: STATIC_VALUE
+              value: "some-value"
+            - name: CONFIG_VALUE
+              valueFrom:
+                configMapKeyRef:
+                  name: mychart-myapp-config
+                  key: some-key
+            - name: SECRET_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: mychart-myapp-secret
+                  key: some-secret
+---
+# Source: ks-universal/templates/job.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: data-import
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: data-import
+spec:
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: ks-universal-0.1.0
+        app.kubernetes.io/name: mychart
+        app.kubernetes.io/instance: mychart
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: data-import
+    spec:
+      restartPolicy: Never
+      containers:
+        
+        
+        
+        - name: main
+          image: myapp:latest
+          args:
+                    - import-data
 ---
 # Source: ks-universal/templates/ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: ingressName1
+  name: myingress
   labels:
     helm.sh/chart: ks-universal-0.1.0
     app.kubernetes.io/name: mychart
     app.kubernetes.io/instance: mychart
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/component: ingressName1
+    app.kubernetes.io/component: myingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
 spec:
   ingressClassName: nginx
   rules:
-    - host: example.com
+    - host: app.example.com
       http:
         paths:
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: ingressName1
+                name: myingress
                 port:
-                  name: http
+                  number: 80
+---
+# Source: ks-universal/templates/hpa.yaml
+# hpa.yaml
+---
+# Source: ks-universal/templates/pdb.yaml
+# pdb.yaml
+---
+# Source: ks-universal/templates/serviceaccount.yaml
+# serviceaccount.yaml
+---
+# Source: ks-universal/templates/configs.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mychart-myapp-config
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    "helm.sh/hook": pre-install,pre-upgrade
+    "helm.sh/hook-weight": "-10"
+data:
+  config.yaml: "key1: value1\nkey2: value2\n"

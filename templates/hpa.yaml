@@ -1,0 +1,28 @@
+# hpa.yaml
+{{- range $deploymentName, $deploymentConfig := .Values.deployments }}
+{{- if $deploymentConfig.hpa }}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $deploymentName }}
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: {{ $deploymentName }}
+  minReplicas: {{ $deploymentConfig.hpa.minReplicas | default 1 }}
+  maxReplicas: {{ $deploymentConfig.hpa.maxReplicas }}
+  metrics:
+    {{- with $deploymentConfig.hpa.metrics }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $deploymentConfig.hpa.behavior }}
+  behavior:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}
