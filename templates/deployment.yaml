@@ -1,3 +1,4 @@
+# deployment.yaml
 {{- if .Values.deployments }}
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}

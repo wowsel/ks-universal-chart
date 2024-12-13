@@ -1,3 +1,4 @@
+# auto-services.yaml
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- if $deploymentConfig.autoCreateService }}
 {{- $ports := list }}

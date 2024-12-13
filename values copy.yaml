@@ -120,10 +120,10 @@ deployments:
    #     eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/my-role"
 
    # Настройки миграций
-   # migrations:
-   #   enabled: true
-   #   args: ["db:migrate"]
-   #   backoffLimit: 3
+   migrations:
+     enabled: true
+     args: ["db:migrate"]
+     backoffLimit: 3
 
    # Описание контейнеров
    containers:

@@ -1,3 +1,4 @@
+# job.yaml
 {{/* Обработка обычных jobs */}}
 {{- range $jobName, $jobConfig := .Values.jobs }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}

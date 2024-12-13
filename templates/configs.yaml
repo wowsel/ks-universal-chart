@@ -1,3 +1,4 @@
+# configs.yaml
 {{- range $name, $config := .Values.configs }}
 ---
 apiVersion: v1
