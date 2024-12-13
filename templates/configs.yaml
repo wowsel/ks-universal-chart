@@ -1,0 +1,21 @@
+{{- range $name, $config := .Values.configs }}
+---
+apiVersion: v1
+kind: {{ if eq $config.type "secret" }}Secret{{ else }}ConfigMap{{ end }}
+metadata:
+  name: {{ include "ks-universal.configName" (dict "root" $ "name" $name) }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+{{- if eq $config.type "secret" }}
+type: Opaque
+data:
+  {{- range $key, $value := $config.data }}
+  {{ $key }}: {{ $value | b64enc }}
+  {{- end }}
+{{- else }}
+data:
+  {{- range $key, $value := $config.data }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+{{- end }}
+{{- end }}

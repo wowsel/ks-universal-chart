@@ -1,0 +1,71 @@
+{{- if .Values.deployments }}
+{{- range $deploymentName, $deploymentConfig := .Values.deployments }}
+{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $deploymentName }}
+  {{- with $defaultedConfig.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  replicas: {{ $defaultedConfig.replicas | default 1 }}
+  selector:
+    matchLabels:
+      {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 8 }}
+      {{- with $defaultedConfig.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- with $.Values.generic.extraImagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with $defaultedConfig.securityContext }}
+      securityContext:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        {{- range $containerName, $container := $defaultedConfig.containers }}
+        {{- include "ks-universal.validateContainer" (dict "container" $container "name" $containerName) }}
+        - name: {{ $containerName }}
+          image: {{ $container.image }}:{{ $container.imageTag }}
+          {{- if or $container.env $container.envFrom }}
+          {{- if $container.envFrom }}
+          envFrom:
+            {{- range $container.envFrom }}
+            - {{ .type }}Ref:
+                name: {{ include "ks-universal.configName" (dict "root" $ "name" .configName) }}
+            {{- end }}
+          {{- end }}
+          {{- if $container.env }}
+          env:
+            - name: {{ $container.env.name }}
+              value: {{ $container.env.value | quote }}
+          {{- end }}
+          {{- end }}
+          {{- with $container.ports }}
+          ports:
+            {{- range $portName, $port := . }}
+            - name: {{ $portName }}
+              containerPort: {{ $port.containerPort }}
+              protocol: {{ $port.protocol | default "TCP" }}
+            {{- end }}
+          {{- end }}
+          {{- with $container.resources }}
+          resources:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        {{- end }}
+{{- end }}
+{{- end }}

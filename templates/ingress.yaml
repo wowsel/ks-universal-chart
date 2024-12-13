@@ -1,0 +1,43 @@
+{{- if .Values.ingresses }}
+{{- range $ingressName, $ingressConfig := .Values.ingresses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $ingressName }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $ingressName }}
+  {{- with $ingressConfig.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $ingressConfig.ingressClassName }}
+  ingressClassName: {{ $ingressConfig.ingressClassName }}
+  {{- end }}
+  {{- with $ingressConfig.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+  {{- range $ingressConfig.hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+        {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ $ingressName }}
+                port:
+                  {{- if .port }}
+                  number: {{ .port }}
+                  {{- else }}
+                  name: http
+                  {{- end }}
+        {{- end }}
+  {{- end }}
+{{- end }}
+{{- end }}

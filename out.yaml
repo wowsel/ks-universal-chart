@@ -1,0 +1,147 @@
+---
+# Source: ks-universal/templates/configs.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mychart-db-credentials
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+data:
+  DB_PASSWORD: c3VwZXJzZWNyZXQ=
+---
+# Source: ks-universal/templates/configs.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mychart-postgres-config
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+data:
+  DB_HOST: "postgres"
+  DB_PORT: "5432"
+---
+# Source: ks-universal/templates/auto-services.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: example-deployment
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: example-deployment
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app.kubernetes.io/name: example-deployment
+    app.kubernetes.io/instance: mychart
+---
+# Source: ks-universal/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: serviceName1
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: serviceName1
+spec:
+  type: ClusterIP
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
+      protocol: TCP
+  selector:
+    app.kubernetes.io/name: serviceName1
+    app.kubernetes.io/instance: mychart
+---
+# Source: ks-universal/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: example-deployment
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: example-deployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: example-deployment
+      app.kubernetes.io/instance: mychart
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: example-deployment
+        app.kubernetes.io/instance: mychart
+    spec:
+      securityContext:
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
+      containers:
+        - name: app
+          image: nginx:latest
+          envFrom:
+            - configmapRef:
+                name: mychart-postgres-config
+            - secretRef:
+                name: mychart-db-credentials
+          env:
+            - name: value1
+              value: "value1-value"
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          resources:
+            limits:
+              cpu: 100m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
+---
+# Source: ks-universal/templates/ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingressName1
+  labels:
+    helm.sh/chart: ks-universal-0.1.0
+    app.kubernetes.io/name: mychart
+    app.kubernetes.io/instance: mychart
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/component: ingressName1
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ingressName1
+                port:
+                  name: http

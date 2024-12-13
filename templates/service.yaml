@@ -1,0 +1,23 @@
+{{- if .Values.services }}
+{{- range $serviceName, $serviceConfig := .Values.services }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ $serviceName }}
+  labels:
+    {{- include "ks-universal.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $serviceName }}
+spec:
+  type: {{ $serviceConfig.type | default "ClusterIP" }}
+  ports:
+    {{- range $serviceConfig.ports }}
+    - name: {{ .name }}
+      port: {{ .port }}
+      targetPort: {{ .targetPort }}
+      protocol: {{ .protocol | default "TCP" }}
+    {{- end }}
+  selector:
+    {{- include "ks-universal.deploymentSelector" (dict "name" $serviceName "instance" $.Release.Name) | nindent 4 }}
+{{- end }}
+{{- end }}
