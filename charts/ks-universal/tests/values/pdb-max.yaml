@@ -1,0 +1,9 @@
+# charts/ks-universal/tests/values/pdb-max.yaml
+deployments:
+  app1:
+    containers:
+      main:
+        image: app
+        imageTag: v1.0
+    pdb:
+      maxUnavailable: 1

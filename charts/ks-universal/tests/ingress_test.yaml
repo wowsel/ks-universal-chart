@@ -1,0 +1,32 @@
+# ingress_test.yaml
+suite: Ingress tests
+templates:
+  - ingress.yaml
+tests:
+  - it: should create basic ingress
+    values:
+      - ./values/ingress.yaml
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: spec.rules[0].host
+          value: example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /
+  
+  - it: should add TLS configuration
+    values:
+      - ./values/ingress-with-tls.yaml
+    asserts:
+      - isKind:
+          of: Ingress
+      - hasDocuments:
+          count: 1
+      - matchRegex:
+          path: spec.tls[0].secretName
+          pattern: .+
+      - equal:
+          path: spec.tls[0].secretName
+          value: example-tls

@@ -1,0 +1,16 @@
+deployments:
+  app1:
+    containers:
+      main:
+        image: app
+        imageTag: v1.0
+        ports:
+          http-metrics:  # важно, чтобы имя порта было точно http-metrics
+            containerPort: 9113
+    autoCreateServiceMonitor: true  # явно включаем на уровне deployment
+    serviceMonitor:
+      labels:
+        release: prometheus
+
+deploymentsGeneral:
+  autoCreateServiceMonitor: true  # включаем глобально

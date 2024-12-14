@@ -96,8 +96,8 @@ spec:
         - name: main
           image: nginx:1.21
           args:
-                    - --config
-                    - /etc/nginx/nginx.conf
+            - --config
+            - /etc/nginx/nginx.conf
           ports:
             - name: http
               containerPort: 80
@@ -119,24 +119,24 @@ spec:
             - name: API_KEY
               value: "some-api-key"
           resources:
-                    limits:
-                      cpu: 200m
-                      memory: 256Mi
-                    requests:
-                      cpu: 100m
-                      memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
           livenessProbe:
-                    httpGet:
-                      path: /custom-health
-                      port: http
-                    initialDelaySeconds: 45
+            httpGet:
+              path: /custom-health
+              port: http
+            initialDelaySeconds: 45
           lifecycle:
             preStop:
-                      exec:
-                        command:
-                        - /bin/sh
-                        - -c
-                        - nginx -s quit
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - nginx -s quit
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -223,33 +223,33 @@ spec:
         - name: main
           image: cleanup-tool:v1.0
           args:
-                    - --older-than
-                    - 7d
+            - --older-than
+            - 7d
           livenessProbe:
-                    httpGet:
-                      path: /health
-                      port: http
-                    initialDelaySeconds: 30
-                    periodSeconds: 10
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+            periodSeconds: 10
           readinessProbe:
-                    httpGet:
-                      path: /ready
-                      port: http
-                    initialDelaySeconds: 5
-                    periodSeconds: 5
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 5
           startupProbe:
-                    failureThreshold: 30
-                    httpGet:
-                      path: /health
-                      port: http
-                    periodSeconds: 10
+            failureThreshold: 30
+            httpGet:
+              path: /health
+              port: http
+            periodSeconds: 10
           lifecycle:
             preStop:
-                      exec:
-                        command:
-                        - /bin/sh
-                        - -c
-                        - sleep 10
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - sleep 10
 ---
 # Source: ks-universal/templates/ingress.yaml
 apiVersion: networking.k8s.io/v1
@@ -408,8 +408,8 @@ spec:
         - name: main
           image: nginx:1.21
           args:
-                    - --config
-                    - /etc/nginx/nginx.conf
+            - --config
+            - /etc/nginx/nginx.conf
           ports:
             - name: http
               containerPort: 80
@@ -431,21 +431,21 @@ spec:
             - name: API_KEY
               value: "some-api-key"
           resources:
-                    limits:
-                      cpu: 200m
-                      memory: 256Mi
-                    requests:
-                      cpu: 100m
-                      memory: 128Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi
+            requests:
+              cpu: 100m
+              memory: 128Mi
           livenessProbe:
-                    httpGet:
-                      path: /custom-health
-                      port: http
-                    initialDelaySeconds: 45
+            httpGet:
+              path: /custom-health
+              port: http
+            initialDelaySeconds: 45
           lifecycle:
             preStop:
-                      exec:
-                        command:
-                        - /bin/sh
-                        - -c
-                        - nginx -s quit
+              exec:
+                command:
+                - /bin/sh
+                - -c
+                - nginx -s quit

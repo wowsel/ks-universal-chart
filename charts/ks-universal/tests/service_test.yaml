@@ -1,0 +1,25 @@
+suite: Service tests
+templates:
+  - service.yaml
+  - auto-services.yaml
+tests:
+  - it: should create service from explicit configuration
+    values:
+      - ./values/service.yaml
+    template: service.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+
+  - it: should auto-create service from deployment ports
+    values:
+      - ./values/auto-service.yaml
+    template: auto-services.yaml
+    asserts:
+      - isKind:
+          of: Service
+      - hasDocuments:
+          count: 1

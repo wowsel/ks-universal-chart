@@ -1,0 +1,9 @@
+# charts/ks-universal/tests/values/ingress.yaml
+ingresses:
+  app1:
+    hosts:
+      - host: example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            port: 80

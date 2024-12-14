@@ -1,0 +1,11 @@
+# tests/values/migrations.yaml
+deployments:
+  app1:
+    containers:
+      main:
+        image: app
+        imageTag: v1.0
+    migrations:
+      enabled: true
+      args: ["db:migrate"]
+      backoffLimit: 3

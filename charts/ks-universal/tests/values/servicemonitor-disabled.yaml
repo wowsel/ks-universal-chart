@@ -1,0 +1,12 @@
+# charts/ks-universal/tests/values/servicemonitor-disabled.yaml
+deploymentsGeneral:
+  autoCreateServiceMonitor: true
+deployments:
+  app1:
+    containers:
+      main:
+        image: app
+        imageTag: v1.0
+        ports:
+          http:
+            containerPort: 80

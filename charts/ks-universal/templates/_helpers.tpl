@@ -228,6 +228,13 @@ podAntiAffinity:
 {{/* Если задан affinity в конфиге - используем его */}}
 {{- if $config.affinity }}
     {{- $result = $config.affinity }}
+{{/* Если задан nodeSelector, конвертируем его в nodeAffinity */}}
+{{- else if $config.nodeSelector }}
+    {{- $nodeSelectors := list }}
+    {{- range $key, $value := $config.nodeSelector }}
+    {{- $nodeSelectors = append $nodeSelectors (dict "key" $key "operator" "In" "values" (list $value)) }}
+    {{- end }}
+    {{- $result = dict "nodeAffinity" (dict "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list (dict "matchExpressions" $nodeSelectors)))) }}
 {{/* Иначе если нужно создать soft anti-affinity */}}
 {{- else if $createSoftAntiAffinity }}
     {{- $result = include "ks-universal.softAntiAffinity" (dict "deploymentName" $deploymentName) | fromYaml }}
@@ -255,7 +262,7 @@ podAntiAffinity:
   image: {{ include "ks-universal.tplValue" (dict "value" $container.image "context" $root) }}:{{ include "ks-universal.tplValue" (dict "value" $container.imageTag "context" $root) }}
   {{- if $container.args }}
   args:
-    {{- toYaml $container.args | nindent 12 }}
+    {{- toYaml $container.args | nindent 4 }}
   {{- end }}
   {{- if $container.ports }}
   {{- include "ks-universal.validatePorts" (dict "ports" $container.ports "containerName" $containerName) }}
@@ -297,32 +304,25 @@ podAntiAffinity:
   {{- end }}
   {{- with $container.resources }}
   resources:
-    {{- toYaml . | nindent 12 }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
   {{- if $container.probes }}
   {{- if $container.probes.livenessProbe }}
   livenessProbe:
-    {{- toYaml $container.probes.livenessProbe | nindent 12 }}
+    {{- toYaml $container.probes.livenessProbe | nindent 4 }}
   {{- end }}
   {{- if $container.probes.readinessProbe }}
   readinessProbe:
-    {{- toYaml $container.probes.readinessProbe | nindent 12 }}
+    {{- toYaml $container.probes.readinessProbe | nindent 4 }}
   {{- end }}
   {{- if $container.probes.startupProbe }}
   startupProbe:
-    {{- toYaml $container.probes.startupProbe | nindent 12 }}
+    {{- toYaml $container.probes.startupProbe | nindent 4 }}
   {{- end }}
   {{- end }}
   {{- with $container.lifecycle }}
   lifecycle:
-    {{- if .postStart }}
-    postStart:
-      {{- toYaml .postStart | nindent 14 }}
-    {{- end }}
-    {{- if .preStop }}
-    preStop:
-      {{- toYaml .preStop | nindent 14 }}
-    {{- end }}
+    {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
 {{- end }}

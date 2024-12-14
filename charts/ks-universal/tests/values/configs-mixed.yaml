@@ -1,0 +1,9 @@
+configs:
+  app-config:
+    type: configmap
+    data:
+      key1: value1
+  app-secrets:
+    type: secret
+    data:
+      secret1: "c2VjcmV0"

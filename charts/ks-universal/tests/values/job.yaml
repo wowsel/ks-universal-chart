@@ -1,0 +1,10 @@
+jobs:
+  backup:
+    containers:
+      main:
+        image: backup-tool
+        imageTag: v1.0
+        args: ["--backup-path", "/data"]
+    activeDeadlineSeconds: 600
+    backoffLimit: 3
+    restartPolicy: Never

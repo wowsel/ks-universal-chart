@@ -1,0 +1,17 @@
+# charts/ks-universal/tests/values/hpa-cpu.yaml
+deployments:
+  app1:
+    containers:
+      main:
+        image: app
+        imageTag: v1.0
+    hpa:
+      minReplicas: 2
+      maxReplicas: 5
+      metrics:
+      - type: Resource
+        resource:
+          name: cpu
+          target:
+            type: Utilization
+            averageUtilization: 80

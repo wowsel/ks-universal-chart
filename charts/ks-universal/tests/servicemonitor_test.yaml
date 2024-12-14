@@ -1,0 +1,21 @@
+# servicemonitor_test.yaml
+suite: ServiceMonitor tests
+templates:
+  - servicemonitor.yaml
+tests:
+  - it: should create servicemonitor when enabled and metrics port exists
+    values:
+      - ./values/servicemonitor.yaml
+    asserts:
+      - isKind:
+          of: ServiceMonitor
+      - equal:
+          path: spec.endpoints[0].port
+          value: http-metrics
+
+  - it: should not create servicemonitor when no metrics port
+    values:
+      - ./values/servicemonitor-disabled.yaml
+    asserts:
+      - hasDocuments:
+          count: 0

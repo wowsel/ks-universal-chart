@@ -1,0 +1,7 @@
+deploymentsGeneral: {}
+deployments: {}
+configs: {}
+services: {}
+ingresses: {}
+jobs: {}
+generic: {}

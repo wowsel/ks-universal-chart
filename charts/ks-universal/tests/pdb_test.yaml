@@ -1,0 +1,24 @@
+# pdb_test.yaml
+suite: PDB tests
+templates:
+  - pdb.yaml
+tests:
+  - it: should create PDB with minAvailable
+    values:
+      - ./values/pdb-min.yaml
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.minAvailable
+          value: 1
+
+  - it: should create PDB with maxUnavailable
+    values:
+      - ./values/pdb-max.yaml
+    asserts:
+      - isKind:
+          of: PodDisruptionBudget
+      - equal:
+          path: spec.maxUnavailable
+          value: 1
