@@ -1,4 +1,3 @@
-# job_test.yaml
 suite: Job tests
 templates:
   - job.yaml
@@ -25,7 +24,6 @@ tests:
       - equal:
           path: spec.backoffLimit
           value: 3
-      - contains:
-          path: metadata.annotations
-          content:
-            helm.sh/hook: pre-install,pre-upgrade
+      - equal:
+          path: metadata.annotations["helm.sh/hook"]
+          value: pre-install,pre-upgrade

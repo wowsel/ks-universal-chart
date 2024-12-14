@@ -1,8 +1,6 @@
-# servicemonitor.yaml
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
-{{- $shouldCreateServiceMonitor := and (eq (include "ks-universal.shouldCreateServiceMonitor" (dict "deploymentConfig" $deploymentConfig "general" $.Values.deploymentsGeneral)) "true") (include "ks-universal.hasMetricsPort" (dict "containers" $defaultedConfig.containers)) }}
-{{- if $shouldCreateServiceMonitor }}
+{{- if and $deploymentConfig.autoCreateServiceMonitor (include "ks-universal.hasMetricsPort" (dict "containers" $defaultedConfig.containers)) }}
 ---
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -11,10 +9,8 @@ metadata:
   labels:
     {{- include "ks-universal.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $deploymentName }}
-    {{- if hasKey $defaultedConfig "serviceMonitor" }}
-    {{- with $defaultedConfig.serviceMonitor.labels }}
+    {{- with $deploymentConfig.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
-    {{- end }}
     {{- end }}
 spec:
   selector:
@@ -22,31 +18,5 @@ spec:
       {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 6 }}
   endpoints:
   - port: http-metrics
-    {{- if hasKey $defaultedConfig "serviceMonitor" }}
-    {{- with $defaultedConfig.serviceMonitor.interval }}
-    interval: {{ . }}
-    {{- end }}
-    {{- with $defaultedConfig.serviceMonitor.scrapeTimeout }}
-    scrapeTimeout: {{ . }}
-    {{- end }}
-    path: {{ $defaultedConfig.serviceMonitor.path | default "/metrics" }}
-    {{- with $defaultedConfig.serviceMonitor.scheme }}
-    scheme: {{ . }}
-    {{- end }}
-    {{- with $defaultedConfig.serviceMonitor.relabelings }}
-    relabelings:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-    {{- with $defaultedConfig.serviceMonitor.metricRelabelings }}
-    metricRelabelings:
-      {{- toYaml . | nindent 6 }}
-    {{- end }}
-    {{- end }}
-  {{- if hasKey $defaultedConfig "serviceMonitor" }}
-  {{- with $defaultedConfig.serviceMonitor.namespaceSelector }}
-  namespaceSelector:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- end }}
 {{- end }}
 {{- end }}
