@@ -1,4 +1,4 @@
-# Global settings
+# Global settings 
 generic:
   extraImagePullSecrets:
     - name: my-registry-secret
