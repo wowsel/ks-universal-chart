@@ -83,15 +83,21 @@ helm uninstall my-release
 ## Documentation Structure
 
 Detailed documentation for each resource type is available in separate files:
-- [Deployments](./deployments.md)
-- [Services](./services.md)
-- [Configs](./configs.md)
-- [Ingress](./ingress.md)
-- [HPA](./hpa.md)
-- [PDB](./pdb.md)
-- [ServiceAccount](./serviceaccount.md)
-- [Jobs](./jobs.md)
-- [ServiceMonitor](./servicemonitor.md)
+- [Deployments](./docs/deployments.md)
+- [Services](./docs/services.md)
+- [Configs](./docs/configs.md)
+- [Ingress](./docs/ingress.md)
+- [HPA](./docs/hpa.md)
+- [PDB](./docs/pdb.md)
+- [ServiceAccount](./docs/serviceaccount.md)
+- [Jobs](./docs/jobs.md)
+- [ServiceMonitor](./docs/servicemonitor.md)
+
+## Troubleshooting
+- [Troubleshooting](./docs/troubleshooting-doc.md)
+
+## Use cases
+- [Use-cases](./docs/use-cases-doc.md)
 
 ## Contributing
 Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.

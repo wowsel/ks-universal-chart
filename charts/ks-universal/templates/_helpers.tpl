@@ -3,7 +3,7 @@
 Expand the name of the chart.
 */}}
 {{- define "ks-universal.name" -}}
-{{- .Release.Name | trunc 63 | trimSuffix "-" }}
+{{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
@@ -18,9 +18,12 @@ Common labels
 */}}
 {{- define "ks-universal.labels" -}}
 helm.sh/chart: {{ include "ks-universal.chart" . }}
-app.kubernetes.io/name: {{ include "ks-universal.name" . }}
-app.kubernetes.io/instance: {{ .Release.Name }}
 app.kubernetes.io/managed-by: {{ .Release.Service }}
+{{- if .name }}
+app.kubernetes.io/name: {{ .name }}
+app.kubernetes.io/instance: {{ .Release.Name }}
+app.kubernetes.io/component: {{ .name }}
+{{- end }}
 {{- end }}
 
 {{/*
@@ -31,13 +34,35 @@ app.kubernetes.io/name: {{ include "ks-universal.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
+{{- define "ks-universal.componentLabels" -}}
+{{- $name := .name -}}
+{{- $instance := .root.Release.Name -}}
+app.kubernetes.io/name: {{ $name }}
+app.kubernetes.io/instance: {{ $instance }}
+app.kubernetes.io/component: {{ $name }}
+{{- end }}
+
 {{/*
 Create the deployment selector labels
 */}}
 {{- define "ks-universal.deploymentSelector" -}}
-app.kubernetes.io/name: {{ .name }}
-app.kubernetes.io/instance: {{ .instance }}
+{{- $name := .name -}}
+{{- $instance := .instance -}}
+app.kubernetes.io/name: {{ $name }}
+app.kubernetes.io/instance: {{ $instance }}
+app.kubernetes.io/component: {{ $name }}
 {{- end }}
+
+
+{{/*
+Service labels
+*/}}
+{{- define "ks-universal.serviceLabels" -}}
+{{- $serviceName := .serviceName -}}
+{{- $root := .root -}}
+{{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $serviceName) | nindent 0 }}
+{{- end }}
+
 
 {{/*
 Validation for required fields

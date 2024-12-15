@@ -6,8 +6,7 @@ kind: Deployment
 metadata:
   name: {{ $deploymentName }}
   labels:
-    {{- include "ks-universal.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $deploymentName }}
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $deploymentName) | nindent 4 }}
   {{- if $defaultedConfig.annotations }}
   annotations:
     {{- toYaml $defaultedConfig.annotations | nindent 4 }}
@@ -18,11 +17,11 @@ spec:
   {{- end }}
   selector:
     matchLabels:
-      {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 6 }}
+      {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $) | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $.Release.Name) | nindent 8 }}
+        {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $deploymentName) | nindent 8 }}
       {{- if $defaultedConfig.podAnnotations }}
       annotations:
         {{- toYaml $defaultedConfig.podAnnotations | nindent 8 }}

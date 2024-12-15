@@ -5,8 +5,7 @@ kind: Ingress
 metadata:
   name: {{ $ingressName }}
   labels:
-    {{- include "ks-universal.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $ingressName }}
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $ingressName) | nindent 4 }}
   {{- with $ingressConfig.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}

@@ -1,3 +1,4 @@
+{{/* Service helper template */}}
 {{- define "ks-universal.service" -}}
 {{- $serviceName := .serviceName }}
 {{- $serviceConfig := .serviceConfig }}
@@ -7,8 +8,7 @@ kind: Service
 metadata:
   name: {{ $serviceName }}
   labels:
-    {{- include "ks-universal.labels" $root | nindent 4 }}
-    app.kubernetes.io/component: {{ $serviceName }}
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $serviceName) | nindent 4 }}
 spec:
   type: {{ $serviceConfig.type | default "ClusterIP" }}
   ports:
@@ -22,7 +22,7 @@ spec:
       protocol: {{ .protocol | default "TCP" }}
     {{- end }}
   selector:
-    {{- include "ks-universal.deploymentSelector" (dict "name" $serviceName "instance" $root.Release.Name) | nindent 4 }}
+    {{- include "ks-universal.componentLabels" (dict "name" $serviceName "root" $root) | nindent 4 }}
 {{- end }}
 
 {{/* Main service template */}}

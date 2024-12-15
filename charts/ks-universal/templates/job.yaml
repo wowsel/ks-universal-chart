@@ -6,8 +6,7 @@ kind: Job
 metadata:
   name: {{ $jobName }}
   labels:
-    {{- include "ks-universal.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $jobName }}
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 4 }}
   {{- with $defaultedConfig.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -22,8 +21,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "ks-universal.labels" $ | nindent 8 }}
-        app.kubernetes.io/component: {{ $jobName }}
+        {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 8 }}
       {{- with $defaultedConfig.podAnnotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
@@ -48,8 +46,7 @@ kind: Job
 metadata:
   name: {{ $deploymentName }}-migrations
   labels:
-    {{- include "ks-universal.labels" $ | nindent 4 }}
-    app.kubernetes.io/component: {{ $deploymentName }}-migrations
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" (printf "%s-migrations" $deploymentName)) | nindent 4 }}
   annotations:
     "helm.sh/hook": pre-install,pre-upgrade
     "helm.sh/hook-weight": "-5"
@@ -59,8 +56,7 @@ spec:
   template:
     metadata:
       labels:
-        {{- include "ks-universal.labels" $ | nindent 8 }}
-        app.kubernetes.io/component: {{ $deploymentName }}-migrations
+        {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" (printf "%s-migrations" $deploymentName)) | nindent 8 }}
     spec:
       restartPolicy: Never
       {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets (not (empty $.Values.generic.extraImagePullSecrets)) }}
