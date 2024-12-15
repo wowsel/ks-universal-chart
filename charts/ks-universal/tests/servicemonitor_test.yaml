@@ -1,21 +1,63 @@
-# servicemonitor_test.yaml
-suite: ServiceMonitor tests
+# tests/servicemonitor/servicemonitor_test.yaml
+suite: test service monitors
 templates:
   - servicemonitor.yaml
+  - deployment.yaml
 tests:
-  - it: should create servicemonitor when enabled and metrics port exists
+  - it: should create basic ServiceMonitor
     values:
-      - ./values/servicemonitor.yaml
+      - ./servicemonitor/values/basic-metrics.yaml
     asserts:
-      - isKind:
-          of: ServiceMonitor
-      - equal:
+      - template: servicemonitor.yaml
+        equal:
+          path: kind
+          value: ServiceMonitor
+      - template: servicemonitor.yaml
+        equal:
           path: spec.endpoints[0].port
           value: http-metrics
+      - template: servicemonitor.yaml
+        equal:
+          path: spec.selector.matchLabels['app.kubernetes.io/name']
+          value: web-app
+      - template: servicemonitor.yaml
+        equal:
+          path: spec.selector.matchLabels['app.kubernetes.io/instance']
+          value: RELEASE-NAME
+      - template: deployment.yaml
+        equal:
+          path: kind
+          value: Deployment
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].ports[0].name
+          value: http-metrics
+      - template: deployment.yaml
+        equal:
+          path: spec.selector.matchLabels['app.kubernetes.io/name']
+          value: web-app
+      - template: deployment.yaml
+        equal:
+          path: spec.selector.matchLabels['app.kubernetes.io/instance']
+          value: RELEASE-NAME
 
-  - it: should not create servicemonitor when no metrics port
+
+  - it: should create ServiceMonitor with custom labels
     values:
-      - ./values/servicemonitor-disabled.yaml
+      - ./servicemonitor/values/custom-labels.yaml
     asserts:
-      - hasDocuments:
-          count: 0
+      - template: deployment.yaml
+        hasDocuments:
+          count: 1
+      - template: servicemonitor.yaml
+        equal:
+          path: kind
+          value: ServiceMonitor
+      - template: servicemonitor.yaml          
+        equal:
+          path: metadata.labels.release
+          value: prometheus
+      - template: servicemonitor.yaml          
+        equal:
+          path: spec.endpoints[0].port
+          value: http-metrics

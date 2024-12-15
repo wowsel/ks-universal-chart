@@ -1,0 +1,58 @@
+# tests/services/services_test.yaml
+suite: test services configurations
+templates:
+  - service.yaml
+tests:
+  - it: should create basic ClusterIP service
+    values:
+      - ./services/values/basic-service.yaml
+    asserts:
+      - matchRegex:
+          path: kind
+          pattern: Service
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 8080
+
+  - it: should create LoadBalancer service with multiple ports
+    values:
+      - ./services/values/loadbalancer-service.yaml
+    asserts:
+      - matchRegex:
+          path: kind
+          pattern: Service
+      - equal:
+          path: spec.type
+          value: LoadBalancer
+      - equal:
+          path: spec.ports[0].name
+          value: http
+      - equal:
+          path: spec.ports[1].name
+          value: https
+      - equal:
+          path: spec.ports[1].port
+          value: 443
+
+  - it: should create NodePort service with specific nodePort
+    values:
+      - ./services/values/nodeport-service.yaml
+    asserts:
+      - matchRegex:
+          path: kind
+          pattern: Service
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 30090
+      - equal:
+          path: spec.ports[0].targetPort
+          value: 9090

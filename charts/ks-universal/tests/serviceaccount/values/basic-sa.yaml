@@ -1,0 +1,4 @@
+# tests/serviceaccount/values/basic-sa.yaml
+deployments:
+  web-app:
+    serviceAccount: {}

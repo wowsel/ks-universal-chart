@@ -1,7 +1,5 @@
-# pdb.yaml
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- if $deploymentConfig.pdb }}
----
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
@@ -20,4 +18,5 @@ spec:
   maxUnavailable: {{ $deploymentConfig.pdb.maxUnavailable }}
   {{- end }}
 {{- end }}
+---
 {{- end }}

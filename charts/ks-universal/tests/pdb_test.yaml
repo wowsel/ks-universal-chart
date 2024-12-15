@@ -1,24 +1,37 @@
-# pdb_test.yaml
-suite: PDB tests
+# tests/pdb/pdb_test.yaml
+suite: test pod disruption budgets
 templates:
   - pdb.yaml
 tests:
-  - it: should create PDB with minAvailable
+  - it: should create PDB with absolute minAvailable
     values:
-      - ./values/pdb-min.yaml
+      - ./pdb/values/absolute-numbers.yaml
     asserts:
-      - isKind:
-          of: PodDisruptionBudget
+      - matchRegex:
+          path: kind
+          pattern: PodDisruptionBudget
       - equal:
           path: spec.minAvailable
-          value: 1
+          value: 3
+
+  - it: should create PDB with percentage minAvailable
+    values:
+      - ./pdb/values/percentage-values.yaml
+    asserts:
+      - matchRegex:
+          path: kind
+          pattern: PodDisruptionBudget
+      - equal:
+          path: spec.minAvailable
+          value: "50%"
 
   - it: should create PDB with maxUnavailable
     values:
-      - ./values/pdb-max.yaml
+      - ./pdb/values/max-unavailable.yaml
     asserts:
-      - isKind:
-          of: PodDisruptionBudget
+      - matchRegex:
+          path: kind
+          pattern: PodDisruptionBudget
       - equal:
           path: spec.maxUnavailable
-          value: 1
+          value: 2

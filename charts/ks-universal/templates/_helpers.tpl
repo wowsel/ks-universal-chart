@@ -43,34 +43,34 @@ app.kubernetes.io/instance: {{ .instance }}
 Validation for required fields
 */}}
 {{- define "ks-universal.validateContainer" -}}
-{{- $container := .container }}
-{{- $name := .name }}
-{{- if not $container.image }}
-{{- fail (printf "Container %s: image is required" $name) }}
-{{- end }}
-{{- if not $container.imageTag }}
-{{- fail (printf "Container %s: imageTag is required" $name) }}
-{{- end }}
+{{- $container := .container -}}
+{{- $name := .name -}}
+{{- if not $container.image -}}
+{{- fail (printf "Container %s: image is required" $name) -}}
+{{- end -}}
+{{- if not $container.imageTag -}}
+{{- fail (printf "Container %s: imageTag is required" $name) -}}
+{{- end -}}
 {{/* Проверка полей valueFrom в env */}}
-{{- if $container.env }}
-{{- range $container.env }}
-{{- if and (not .value) (not .valueFrom) }}
-{{- fail (printf "Container %s: either value or valueFrom must be specified for environment variable %s" $name .name) }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- if $container.env -}}
+{{- range $container.env -}}
+{{- if and (not .value) (not .valueFrom) -}}
+{{- fail (printf "Container %s: either value or valueFrom must be specified for environment variable %s" $name .name) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 {{/* Проверка полей envFrom */}}
-{{- if $container.envFrom }}
-{{- range $container.envFrom }}
-{{- if not .type }}
-{{- fail (printf "Container %s: envFrom type is required (configMap or secret)" $name) }}
-{{- end }}
-{{- if not .configName }}
-{{- fail (printf "Container %s: envFrom configName is required" $name) }}
-{{- end }}
-{{- end }}
-{{- end }}
-{{- end }}
+{{- if $container.envFrom -}}
+{{- range $container.envFrom -}}
+{{- if not .type -}}
+{{- fail (printf "Container %s: envFrom type is required (configMap or secret)" $name) -}}
+{{- end -}}
+{{- if not .configName -}}
+{{- fail (printf "Container %s: envFrom configName is required" $name) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Merge deployment values with general defaults
@@ -123,9 +123,8 @@ Merge deployment values with general defaults
 {{- end }}
 {{- end }}
 
-{{/* Создаем имя конфига */}}
 {{- define "ks-universal.configName" -}}
-{{- printf "%s-%s" .root.Release.Name .name }}
+{{- printf "%s" .name }}
 {{- end }}
 
 {{- define "ks-universal.ingressDefaults" -}}
@@ -150,7 +149,6 @@ Merge deployment values with general defaults
 {{- toYaml $result }}
 {{- end }}
 
-{{/* Добавляем новый helper для валидации портов */}}
 {{- define "ks-universal.validatePorts" -}}
 {{- $ports := .ports }}
 {{- $containerName := .containerName }}
@@ -254,10 +252,10 @@ podAntiAffinity:
 
 {{/* Helper для генерации контейнеров */}}
 {{- define "ks-universal.containers" -}}
-{{- $root := .root }}
-{{- $containers := .containers }}
-{{- range $containerName, $container := $containers }}
-{{- include "ks-universal.validateContainer" (dict "container" $container "name" $containerName) }}
+{{- $root := .root -}}
+{{- $containers := .containers -}}
+{{- range $containerName, $container := $containers -}}
+{{- include "ks-universal.validateContainer" (dict "container" $container "name" $containerName) -}}
 - name: {{ $containerName }}
   image: {{ include "ks-universal.tplValue" (dict "value" $container.image "context" $root) }}:{{ include "ks-universal.tplValue" (dict "value" $container.imageTag "context" $root) }}
   {{- if $container.args }}
@@ -324,5 +322,5 @@ podAntiAffinity:
   lifecycle:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-{{- end }}
-{{- end }}
+{{- end -}}
+{{- end -}}

@@ -1,8 +1,6 @@
-# deployment.yaml
 {{- if .Values.deployments }}
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -42,7 +40,7 @@ spec:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
       containers:
-      {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
+        {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
       {{- $affinity := include "ks-universal.processAffinity" (dict "config" $defaultedConfig "deploymentName" $deploymentName "general" $.Values.deploymentsGeneral) | fromYaml }}
       {{- if $affinity }}
       affinity:
@@ -57,4 +55,5 @@ spec:
         {{- toYaml $defaultedConfig.tolerations | nindent 8 }}
       {{- end }}
 {{- end }}
+---
 {{- end }}

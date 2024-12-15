@@ -1,7 +1,5 @@
-# hpa.yaml
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- if $deploymentConfig.hpa }}
----
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
@@ -25,4 +23,5 @@ spec:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
+---
 {{- end }}

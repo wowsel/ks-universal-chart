@@ -1,0 +1,231 @@
+# Global deployment settings
+deploymentsGeneral:
+  # Security context for all pods
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+  
+  # Default node selector for all deployments
+  nodeSelector:
+    tier: application
+  
+  # Default tolerations
+  tolerations:
+    - key: "node.kubernetes.io/dedicated"
+      operator: "Equal"
+      value: "app"
+      effect: "NoSchedule"
+  
+  # Default affinity rules
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: kubernetes.io/arch
+                operator: In
+                values:
+                  - amd64
+  
+  # Default probe settings
+  probes:
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 5
+  
+  # Default lifecycle hooks
+  lifecycle:
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 10"]
+
+  # Enable ServiceMonitor creation by default
+  autoCreateServiceMonitor: true
+  
+  # Enable soft anti-affinity by default
+  autoCreateSoftAntiAffinity: true
+
+# Deployment configurations
+deployments:
+  # Frontend web application
+  web-frontend:
+    replicas: 3
+    containers:
+      nginx:
+        image: nginx
+        imageTag: 1.21
+        ports:
+          http:
+            containerPort: 80
+          https:
+            containerPort: 443
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        env:
+          - name: ENVIRONMENT
+            value: "production"
+        envFrom:
+          - type: configMap
+            configName: frontend-config
+    
+    autoCreateService: true
+    serviceType: ClusterIP
+    
+    hpa:
+      minReplicas: 3
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 80
+    
+    pdb:
+      minAvailable: "50%"
+
+  # Backend API service
+  backend-api:
+    replicas: 4
+    containers:
+      api:
+        image: backend-api
+        imageTag: v2.1
+        ports:
+          http:
+            containerPort: 8080
+          http-metrics:
+            containerPort: 9090
+        resources:
+          requests:
+            cpu: 200m
+            memory: 512Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+        probes:
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 10
+        env:
+          - name: DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: db-config
+                key: host
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: password
+    
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/api-role"
+    
+    migrations:
+      enabled: true
+      args:
+        - python
+        - manage.py
+        - migrate
+      backoffLimit: 3
+
+# Configuration resources
+configs:
+  frontend-config:
+    type: configMap
+    data:
+      API_URL: "http://backend-api:8080"
+      CACHE_TTL: "3600"
+
+  db-config:
+    type: configMap
+    data:
+      host: "postgres.database"
+      port: "5432"
+      database: "myapp"
+
+  db-secrets:
+    type: secret
+    data:
+      username: "appuser"
+      password: "secretpassword"
+
+# Service configurations
+services:
+  backend-api:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 80
+        targetPort: 8080
+      - name: metrics
+        port: 9090
+        targetPort: 9090
+
+# Ingress configurations
+ingresses:
+  web-frontend:
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    tls:
+      - secretName: web-tls
+        hosts:
+          - example.com
+    hosts:
+      - host: example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            port: http
+
+# Job configurations
+jobs:
+  data-cleanup:
+    activeDeadlineSeconds: 3600
+    backoffLimit: 3
+    containers:
+      cleaner:
+        image: data-cleanup
+        imageTag: v1.0
+        args:
+          - --older-than
+          - 30d
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 200m
+            memory: 512Mi
+
+# Generic chart settings
+generic:
+  extraImagePullSecrets:
+    - name: docker-registry

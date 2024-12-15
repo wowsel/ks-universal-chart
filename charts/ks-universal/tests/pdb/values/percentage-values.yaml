@@ -1,0 +1,6 @@
+# tests/pdb/values/percentage-values.yaml
+deployments:
+  api-service:
+    replicas: 10
+    pdb:
+      minAvailable: "50%"

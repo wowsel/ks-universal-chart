@@ -1,0 +1,6 @@
+# tests/pdb/values/absolute-numbers.yaml
+deployments:
+  web-app:
+    replicas: 5
+    pdb:
+      minAvailable: 3

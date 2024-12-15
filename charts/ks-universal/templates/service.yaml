@@ -1,13 +1,13 @@
-# service.yaml
-{{- if .Values.services }}
-{{- range $serviceName, $serviceConfig := .Values.services }}
----
+{{- define "ks-universal.service" -}}
+{{- $serviceName := .serviceName }}
+{{- $serviceConfig := .serviceConfig }}
+{{- $root := .root }}
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ $serviceName }}
   labels:
-    {{- include "ks-universal.labels" $ | nindent 4 }}
+    {{- include "ks-universal.labels" $root | nindent 4 }}
     app.kubernetes.io/component: {{ $serviceName }}
 spec:
   type: {{ $serviceConfig.type | default "ClusterIP" }}
@@ -16,9 +16,36 @@ spec:
     - name: {{ .name }}
       port: {{ .port }}
       targetPort: {{ .targetPort }}
+      {{- if .nodePort }}
+      nodePort: {{ .nodePort }}
+      {{- end }}
       protocol: {{ .protocol | default "TCP" }}
     {{- end }}
   selector:
-    {{- include "ks-universal.deploymentSelector" (dict "name" $serviceName "instance" $.Release.Name) | nindent 4 }}
+    {{- include "ks-universal.deploymentSelector" (dict "name" $serviceName "instance" $root.Release.Name) | nindent 4 }}
+{{- end }}
+
+{{/* Main service template */}}
+{{- if .Values.services }}
+{{- range $serviceName, $serviceConfig := .Values.services }}
+---
+{{- include "ks-universal.service" (dict "serviceName" $serviceName "serviceConfig" $serviceConfig "root" $) }}
+{{- end }}
+{{- end }}
+
+{{/* Auto-created services from deployments */}}
+{{- range $deploymentName, $deploymentConfig := .Values.deployments }}
+{{- if $deploymentConfig.autoCreateService }}
+{{- $ports := list }}
+{{- range $containerName, $container := $deploymentConfig.containers }}
+{{- range $portName, $port := $container.ports }}
+{{- $ports = append $ports (dict "name" $portName "port" $port.containerPort "targetPort" $port.containerPort "protocol" (default "TCP" $port.protocol)) }}
+{{- end }}
+{{- end }}
+{{- if $ports }}
+---
+{{- $serviceConfig := dict "ports" $ports "type" ($deploymentConfig.serviceType | default "ClusterIP") }}
+{{- include "ks-universal.service" (dict "serviceName" $deploymentName "serviceConfig" $serviceConfig "root" $) }}
+{{- end }}
 {{- end }}
 {{- end }}

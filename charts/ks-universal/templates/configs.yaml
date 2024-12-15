@@ -1,6 +1,4 @@
-# configs.yaml
 {{- range $name, $config := .Values.configs }}
----
 apiVersion: v1
 kind: {{ if eq $config.type "secret" }}Secret{{ else }}ConfigMap{{ end }}
 metadata:
@@ -19,7 +17,13 @@ data:
 {{- else }}
 data:
   {{- range $key, $value := $config.data }}
+  {{- if contains "\n" ($value | toString) }}
+  {{ $key }}: |
+{{- $value | nindent 4 }}
+  {{- else }}
   {{ $key }}: {{ $value | quote }}
   {{- end }}
+  {{- end }}
 {{- end }}
+---
 {{- end }}

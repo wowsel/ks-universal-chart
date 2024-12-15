@@ -1,0 +1,7 @@
+# tests/serviceaccount/values/multi-cloud.yaml
+deployments:
+  multi-cloud:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/multi-service"
+        iam.gke.io/gcp-service-account: "cross-cloud@project.iam.gserviceaccount.com"

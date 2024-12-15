@@ -1,0 +1,14 @@
+# tests/servicemonitor/values/custom-labels.yaml
+deployments:
+  backend:
+    autoCreateServiceMonitor: true
+    serviceMonitor:
+      labels:
+        release: prometheus
+    containers:
+      app:
+        image: nginx
+        imageTag: latest
+        ports:
+          http-metrics:
+            containerPort: 8080

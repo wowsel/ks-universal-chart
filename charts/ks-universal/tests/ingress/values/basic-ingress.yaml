@@ -1,0 +1,10 @@
+# tests/ingress/values/basic-ingress.yaml
+ingresses:
+  web-ingress:
+    ingressClassName: nginx
+    hosts:
+      - host: example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            port: http

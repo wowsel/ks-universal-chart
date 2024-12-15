@@ -1,0 +1,15 @@
+# tests/ingress/values/tls-ingress.yaml
+ingresses:
+  secure-ingress:
+    ingressClassName: nginx
+    annotations:
+      cert-manager.io/cluster-issuer: letsencrypt-prod
+    tls:
+      - secretName: example-tls
+        hosts:
+          - secure.example.com
+    hosts:
+      - host: secure.example.com
+        paths:
+          - path: /
+            pathType: Prefix

@@ -1,32 +1,64 @@
-# ingress_test.yaml
-suite: Ingress tests
+# tests/ingress/ingress_test.yaml
+suite: test ingress configurations
 templates:
   - ingress.yaml
 tests:
   - it: should create basic ingress
     values:
-      - ./values/ingress.yaml
+      - ./ingress/values/basic-ingress.yaml
     asserts:
-      - isKind:
-          of: Ingress
+      - matchRegex:
+          path: kind
+          pattern: Ingress
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
       - equal:
           path: spec.rules[0].host
           value: example.com
       - equal:
           path: spec.rules[0].http.paths[0].path
           value: /
-  
-  - it: should add TLS configuration
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+
+  - it: should create ingress with multiple paths
     values:
-      - ./values/ingress-with-tls.yaml
+      - ./ingress/values/multiple-paths.yaml
     asserts:
-      - isKind:
-          of: Ingress
-      - hasDocuments:
-          count: 1
       - matchRegex:
-          path: spec.tls[0].secretName
-          pattern: .+
+          path: kind
+          pattern: Ingress
+      - equal:
+          path: spec.rules[0].host
+          value: api.example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /v1
+      - equal:
+          path: spec.rules[0].http.paths[1].path
+          value: /v2
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 8080
+      - equal:
+          path: spec.rules[0].http.paths[1].backend.service.port.number
+          value: 8081
+
+  - it: should create ingress with TLS
+    values:
+      - ./ingress/values/tls-ingress.yaml
+    asserts:
+      - matchRegex:
+          path: kind
+          pattern: Ingress
+      - equal:
+          path: metadata.annotations["cert-manager.io/cluster-issuer"]
+          value: letsencrypt-prod
       - equal:
           path: spec.tls[0].secretName
           value: example-tls
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: secure.example.com

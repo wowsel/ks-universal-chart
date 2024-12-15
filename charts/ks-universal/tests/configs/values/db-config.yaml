@@ -1,0 +1,14 @@
+# tests/configs/values/db-config.yaml
+configs:
+  db-config:
+    type: configMap
+    data:
+      host: "postgresql.default.svc.cluster.local"
+      port: "5432"
+      database: "myapp"
+
+  db-credentials:
+    type: secret
+    data:
+      username: "app_user"
+      password: "secure-password"

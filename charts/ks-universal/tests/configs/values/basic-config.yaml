@@ -1,0 +1,14 @@
+# tests/configs/values/basic-config.yaml
+configs:
+  app-config:
+    type: configMap
+    data:
+      app.env: "production"
+      app.debug: "false"
+      app.log_level: "info"
+
+  app-secrets:
+    type: secret
+    data:
+      session.key: "random-session-key"
+      encryption.key: "encryption-key-value"

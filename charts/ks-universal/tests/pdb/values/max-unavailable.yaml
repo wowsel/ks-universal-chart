@@ -1,0 +1,6 @@
+# tests/pdb/values/max-unavailable.yaml
+deployments:
+  backend:
+    replicas: 8
+    pdb:
+      maxUnavailable: 2

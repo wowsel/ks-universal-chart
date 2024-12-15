@@ -1,7 +1,6 @@
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
 {{- if and $deploymentConfig.autoCreateServiceMonitor (include "ks-universal.hasMetricsPort" (dict "containers" $defaultedConfig.containers)) }}
----
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -9,8 +8,10 @@ metadata:
   labels:
     {{- include "ks-universal.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $deploymentName }}
+    {{- if $deploymentConfig.serviceMonitor }}
     {{- with $deploymentConfig.serviceMonitor.labels }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
     {{- end }}
 spec:
   selector:
@@ -19,4 +20,5 @@ spec:
   endpoints:
   - port: http-metrics
 {{- end }}
+---
 {{- end }}

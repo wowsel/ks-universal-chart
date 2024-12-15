@@ -1,0 +1,13 @@
+# tests/ingress/values/multiple-paths.yaml
+ingresses:
+  api-ingress:
+    ingressClassName: nginx
+    hosts:
+      - host: api.example.com
+        paths:
+          - path: /v1
+            pathType: Prefix
+            port: 8080
+          - path: /v2
+            pathType: Prefix
+            port: 8081

@@ -1,0 +1,23 @@
+# tests/configs/values/mixed-config.yaml
+configs:
+  redis-config:
+    type: configMap
+    data:
+      redis.conf: |-
+        maxmemory 256mb
+        maxmemory-policy allkeys-lru
+        
+  app-mixed-config:
+    type: configMap
+    data:
+      settings.json: |-
+        {
+          "cache": {
+            "enabled": true,
+            "ttl": 3600
+          },
+          "api": {
+            "timeout": 30,
+            "retry": 3
+          }
+        }
