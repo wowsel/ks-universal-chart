@@ -94,10 +94,10 @@ Detailed documentation for each resource type is available in separate files:
 - [ServiceMonitor](./docs/servicemonitor.md)
 
 ## Troubleshooting
-- [Troubleshooting](./docs/troubleshooting-doc.md)
+- [Troubleshooting](./docs/troubleshooting.md)
 
 ## Use cases
-- [Use-cases](./docs/use-cases-doc.md)
+- [Use-cases](./docs/use-cases.md)
 
 ## Contributing
 Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
