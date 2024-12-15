@@ -1,4 +1,3 @@
-# ct.yaml
 remote: origin
 chart-dirs:
   - charts
@@ -8,3 +7,4 @@ validate-maintainers: false
 validate-chart-schema: true
 validate-yaml: true
 exclude-deprecated: true
+target-branch: main
