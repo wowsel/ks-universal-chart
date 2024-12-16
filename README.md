@@ -1,5 +1,7 @@
 # ks-universal Helm Chart
 
+## Still in development! For testing use only! Do not use in production or anywhere else!
+
 ## Overview
 `ks-universal` is a versatile Helm chart designed for deploying applications in Kubernetes. This chart provides a unified interface for managing various Kubernetes resources and supports most common deployment scenarios.
 
