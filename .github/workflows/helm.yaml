@@ -102,9 +102,9 @@ jobs:
 
       - name: Package and Index Charts
         run: |
-          # Create temporary directory for charts
+          # Create temporary directory for charts and pages
           mkdir -p .cr-release-packages
-          mkdir -p .cr-index
+          mkdir -p pages
           
           # Extract version from release tag
           VERSION=${GITHUB_REF#refs/tags/v}
@@ -115,28 +115,23 @@ jobs:
           # Package chart
           helm package $CHART_DIR --destination .cr-release-packages
           
-          # Download existing index.yaml if it exists
-          if curl -sSf -o existing-index.yaml ${{ env.CHART_REPOSITORY }}/index.yaml; then
-            helm repo index .cr-release-packages --url ${{ env.CHART_REPOSITORY }} --merge existing-index.yaml
-          else
-            helm repo index .cr-release-packages --url ${{ env.CHART_REPOSITORY }}
-          fi
+          # Move packaged charts to pages directory
+          mv .cr-release-packages/* pages/
           
-          # Move the index file
-          cp .cr-release-packages/index.yaml index.yaml
+          # Generate or update index.yaml
+          if curl -sSf -o existing-index.yaml ${{ env.CHART_REPOSITORY }}/index.yaml; then
+            helm repo index pages --url ${{ env.CHART_REPOSITORY }} --merge existing-index.yaml
+          else
+            helm repo index pages --url ${{ env.CHART_REPOSITORY }}
+          fi
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
 
-      - name: Upload Charts
+      - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .cr-release-packages
-
-      - name: Upload Index
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: index.yaml
+          path: pages
 
       - name: Deploy to GitHub Pages
         id: deployment
