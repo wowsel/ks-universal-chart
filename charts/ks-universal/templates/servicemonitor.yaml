@@ -18,6 +18,26 @@ spec:
       {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $) | nindent 6 }}
   endpoints:
   - port: http-metrics
+    {{- if $deploymentConfig.serviceMonitor }}
+    {{- with $deploymentConfig.serviceMonitor.interval }}
+    interval: {{ . }}
+    {{- end }}
+    {{- with $deploymentConfig.serviceMonitor.scrapeTimeout }}
+    scrapeTimeout: {{ . }}
+    {{- end }}
+    {{- with $deploymentConfig.serviceMonitor.relabelings }}
+    relabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with $deploymentConfig.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
+  {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml $deploymentConfig.serviceMonitor.namespaceSelector | nindent 4 }}
+  {{- end }}
 {{- end }}
 ---
 {{- end }}

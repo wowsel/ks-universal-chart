@@ -147,7 +147,7 @@ deployments:
     serviceType: ClusterIP
 ```
 
-### Stateful Application with Migrations
+### Application with Migrations
 ```yaml
 deployments:
   backend:
@@ -166,14 +166,28 @@ deployments:
         - postgresql://db:5432
 ```
 
-### Scaled Application with HPA
+## Replicas and HPA Configuration
+
+### Setting Static Replicas
+You can set a static number of replicas for a deployment using the `replicas` field:
+
 ```yaml
 deployments:
-  api:
+  web-app:
+    replicas: 3
     containers:
-      api:
-        image: api-service
-        imageTag: v2.0.0
+      app:
+        image: nginx
+        imageTag: 1.19
+```
+
+### Replicas with HPA
+When using HPA (Horizontal Pod Autoscaler), the `replicas` field will be ignored if specified. HPA takes full control of scaling:
+
+```yaml
+deployments:
+  web-app:
+    # replicas: 3    # This would be ignored when HPA is enabled
     hpa:
       minReplicas: 2
       maxReplicas: 10
@@ -185,6 +199,12 @@ deployments:
               type: Utilization
               averageUtilization: 80
 ```
+
+### Best Practices
+- Use `replicas` when you need a fixed number of pods
+- Use `hpa` when you need dynamic scaling based on metrics
+- Never use both `replicas` and `hpa` in the same deployment configuration
+- Consider using `pdb` (Pod Disruption Budget) alongside either configuration to ensure availability
 
 ## Notes
 - All container images and tags must be explicitly specified

@@ -23,7 +23,7 @@
 
 1. Add the repository and update:
 ```bash
-helm repo add ks-universal https://your-repo-url.com
+helm repo add ks-universal https://wowsel.github.io/ks-universal-chart
 helm repo update
 ```
 
@@ -92,6 +92,7 @@ Detailed documentation for each resource type is available in separate files:
 - [ServiceAccount](./docs/serviceaccount.md)
 - [Jobs](./docs/jobs.md)
 - [ServiceMonitor](./docs/servicemonitor.md)
+- [Dynamic Values Support](./docs/dynamic-values.md)
 
 ## Troubleshooting
 - [Troubleshooting](./docs/troubleshooting.md)
