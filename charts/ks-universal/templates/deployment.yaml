@@ -27,7 +27,7 @@ spec:
         {{- toYaml $defaultedConfig.podAnnotations | nindent 8 }}
       {{- end }}
     spec:
-      {{- if $deploymentConfig.serviceAccount }}
+      {{- if or $deploymentConfig.serviceAccount $deploymentConfig.autoCreateServiceAccount }}
       serviceAccountName: {{ $deploymentName }}
       {{- end }}
       {{- if and $.Values.generic (hasKey $.Values.generic "extraImagePullSecrets") }}
@@ -38,21 +38,57 @@ spec:
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
-      containers:
-        {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
+      {{/* DEBUG: Before containers */}}
+      containers:{{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
+      {{/* DEBUG: After containers */}}
       {{- $affinity := include "ks-universal.processAffinity" (dict "config" $defaultedConfig "deploymentName" $deploymentName "general" $.Values.deploymentsGeneral) | fromYaml }}
       {{- if $affinity }}
       affinity:
         {{- toYaml $affinity | nindent 8 }}
       {{- end }}
-      {{- if $defaultedConfig.nodeSelector }}
-      nodeSelector:
-        {{- toYaml $defaultedConfig.nodeSelector | nindent 8 }}
-      {{- end }}
       {{- if $defaultedConfig.tolerations }}
       tolerations:
         {{- toYaml $defaultedConfig.tolerations | nindent 8 }}
       {{- end }}
+---
+{{/* Auto-create ServiceAccount if enabled */}}
+{{- if $deploymentConfig.autoCreateServiceAccount }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $deploymentName) | nindent 4 }}
+  {{- if $deploymentConfig.serviceAccountConfig }}
+  {{- with $deploymentConfig.serviceAccountConfig.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- end }}
+{{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
+imagePullSecrets:
+  {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 2 }}
 {{- end }}
 ---
+{{- end }}
+
+{{/* Auto-create PDB if enabled */}}
+{{- if $deploymentConfig.autoCreatePdb }}
+{{- include "ks-universal.autoPdb" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
+---
+{{- end }}
+
+{{/* Auto-create Ingress if enabled */}}
+{{- if $deploymentConfig.autoCreateIngress }}
+{{- include "ks-universal.autoIngress" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
+---
+{{- end }}
+
+{{/* Auto-create ServiceMonitor if enabled */}}
+{{- if $deploymentConfig.autoCreateServiceMonitor }}
+{{- include "ks-universal.serviceMonitor" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
+---
+{{- end }}
+
+{{- end }}
 {{- end }}

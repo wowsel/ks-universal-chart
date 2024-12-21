@@ -248,19 +248,52 @@ podAntiAffinity:
     {{- $createSoftAntiAffinity = $general.autoCreateSoftAntiAffinity }}
 {{- end }}
 
-{{/* Если задан affinity в конфиге - используем его */}}
+{{/* Собираем все nodeSelector'ы в один список для конвертации в nodeAffinity */}}
+{{- $nodeSelectors := list }}
+
+{{/* Если задан affinity в конфиге - используем его как базу */}}
 {{- if $config.affinity }}
-    {{- $result = $config.affinity }}
-{{/* Если задан nodeSelector, конвертируем его в nodeAffinity */}}
-{{- else if $config.nodeSelector }}
-    {{- $nodeSelectors := list }}
+    {{- $result = deepCopy $config.affinity }}
+{{- end }}
+
+{{/* Если есть nodeSelector в конфиге - добавляем его в список для конвертации */}}
+{{- if $config.nodeSelector }}
     {{- range $key, $value := $config.nodeSelector }}
-    {{- $nodeSelectors = append $nodeSelectors (dict "key" $key "operator" "In" "values" (list $value)) }}
+        {{- $nodeSelectors = append $nodeSelectors (dict "key" $key "operator" "In" "values" (list $value)) }}
     {{- end }}
-    {{- $result = dict "nodeAffinity" (dict "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list (dict "matchExpressions" $nodeSelectors)))) }}
-{{/* Иначе если нужно создать soft anti-affinity */}}
-{{- else if $createSoftAntiAffinity }}
-    {{- $result = include "ks-universal.softAntiAffinity" (dict "deploymentName" $deploymentName) | fromYaml }}
+{{- end }}
+
+{{/* Если есть nodeSelector в general настройках и он не переопределен в конфиге - добавляем его */}}
+{{- if and $general.nodeSelector (not $config.nodeSelector) }}
+    {{- range $key, $value := $general.nodeSelector }}
+        {{- $nodeSelectors = append $nodeSelectors (dict "key" $key "operator" "In" "values" (list $value)) }}
+    {{- end }}
+{{- end }}
+
+{{/* Если у нас есть nodeSelector'ы для конвертации */}}
+{{- if $nodeSelectors }}
+    {{/* Если уже есть nodeAffinity - добавляем новые термы */}}
+    {{- if hasKey $result "nodeAffinity" }}
+        {{- if hasKey $result.nodeAffinity "requiredDuringSchedulingIgnoredDuringExecution" }}
+            {{- $nodeSelectorTerms := $result.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution.nodeSelectorTerms }}
+            {{/* Добавляем наши новые термы к существующим */}}
+            {{- $newTerm := dict "matchExpressions" $nodeSelectors }}
+            {{- $nodeSelectorTerms = append $nodeSelectorTerms $newTerm }}
+            {{- $_ := set $result.nodeAffinity.requiredDuringSchedulingIgnoredDuringExecution "nodeSelectorTerms" $nodeSelectorTerms }}
+        {{- else }}
+            {{- $_ := set $result.nodeAffinity "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list (dict "matchExpressions" $nodeSelectors))) }}
+        {{- end }}
+    {{- else }}
+        {{/* Создаем новый nodeAffinity */}}
+        {{- $nodeAffinity := dict "requiredDuringSchedulingIgnoredDuringExecution" (dict "nodeSelectorTerms" (list (dict "matchExpressions" $nodeSelectors))) }}
+        {{- $_ := set $result "nodeAffinity" $nodeAffinity }}
+    {{- end }}
+{{- end }}
+
+{{/* Если нужно создать soft anti-affinity и еще нет podAntiAffinity */}}
+{{- if and $createSoftAntiAffinity (not (hasKey $result "podAntiAffinity")) }}
+    {{- $antiAffinity := dict "preferredDuringSchedulingIgnoredDuringExecution" (list (dict "weight" 100 "podAffinityTerm" (dict "labelSelector" (dict "matchLabels" (dict "app.kubernetes.io/component" $deploymentName)) "topologyKey" "kubernetes.io/hostname"))) }}
+    {{- $_ := set $result "podAntiAffinity" $antiAffinity }}
 {{- end }}
 
 {{- toYaml $result }}
@@ -275,14 +308,17 @@ podAntiAffinity:
     {{- end }}
 {{- end }}
 
-{{/* Helper для генерации контейнеров */}}
-{{- define "ks-universal.containers" -}}
+{{/* Helper for generating containers */}}
+{{- define "ks-universal.containers" }}
+{{/* DEBUG: Start of containers helper */}}
 {{- $root := .root -}}
 {{- $containers := .containers -}}
-{{- range $containerName, $container := $containers -}}
-{{- include "ks-universal.validateContainer" (dict "container" $container "name" $containerName) -}}
+{{/* DEBUG: Before containers loop */}}
+{{- range $containerName, $container := $containers }}
+{{/* DEBUG: Processing container: $containerName */}}
 - name: {{ $containerName }}
   image: {{ include "ks-universal.tplValue" (dict "value" $container.image "context" $root) }}:{{ include "ks-universal.tplValue" (dict "value" $container.imageTag "context" $root) }}
+{{/* DEBUG: After container basic fields */}}
   {{- if $container.args }}
   args:
     {{- toYaml $container.args | nindent 4 }}
@@ -347,5 +383,153 @@ podAntiAffinity:
   lifecycle:
     {{- toYaml . | nindent 4 }}
   {{- end }}
-{{- end -}}
-{{- end -}}
+{{- end }}
+{{/* DEBUG: End of containers helper */}}
+{{- end }}
+
+{{/* Helper для автоматического создания ingress */}}
+{{- define "ks-universal.autoIngress" -}}
+{{- $deploymentName := .deploymentName }}
+{{- $deploymentConfig := .deploymentConfig }}
+{{- $root := .root }}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $root.Values.ingressesGeneral) | fromYaml }}
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
+  {{- with $defaultedIngress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if $defaultedIngress.ingressClassName }}
+  ingressClassName: {{ $defaultedIngress.ingressClassName }}
+  {{- end }}
+  {{- with $defaultedIngress.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+  {{- $ports := list }}
+  {{- range $containerName, $container := $deploymentConfig.containers }}
+    {{- range $portName, $port := $container.ports }}
+      {{- $ports = append $ports (dict "name" $portName "port" $port.containerPort) }}
+    {{- end }}
+  {{- end }}
+  {{- $firstPort := first $ports }}
+  {{- range $defaultedIngress.hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+        {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType | default "Prefix" }}
+            backend:
+              service:
+                name: {{ $deploymentName }}
+                port:
+                  {{- if .port }}
+                  number: {{ .port }}
+                  {{- else if .portName }}
+                  name: {{ .portName }}
+                  {{- else if $firstPort }}
+                  {{- if $firstPort.name }}
+                  name: {{ $firstPort.name }}
+                  {{- else }}
+                  number: {{ $firstPort.port }}
+                  {{- end }}
+                  {{- end }}
+        {{- end }}
+  {{- end }}
+{{- end }}
+
+{{/* Helper для автоматического создания PDB */}}
+{{- define "ks-universal.autoPdb" -}}
+{{- $deploymentName := .deploymentName }}
+{{- $deploymentConfig := .deploymentConfig }}
+{{- $root := .root }}
+
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ks-universal.deploymentSelector" (dict "name" $deploymentName "instance" $root.Release.Name) | nindent 6 }}
+  {{- if $deploymentConfig.pdbConfig }}
+    {{- if $deploymentConfig.pdbConfig.minAvailable }}
+  minAvailable: {{ $deploymentConfig.pdbConfig.minAvailable }}
+    {{- end }}
+    {{- if $deploymentConfig.pdbConfig.maxUnavailable }}
+  maxUnavailable: {{ $deploymentConfig.pdbConfig.maxUnavailable }}
+    {{- end }}
+  {{- else }}
+  maxUnavailable: 1
+  {{- end }}
+{{- end }}
+
+{{/* Updated ServiceMonitor template */}}
+{{- define "ks-universal.serviceMonitor" -}}
+{{- $deploymentName := .deploymentName }}
+{{- $deploymentConfig := .deploymentConfig }}
+{{- $root := .root }}
+
+{{/* Determine the port to monitor */}}
+{{- $monitorPort := dict }}
+{{- if $deploymentConfig.serviceMonitorPort }}
+  {{- $monitorPort = dict "name" $deploymentConfig.serviceMonitorPort }}
+{{- else }}
+  {{/* Find the first available port */}}
+  {{- range $containerName, $container := $deploymentConfig.containers }}
+    {{- range $portName, $port := $container.ports }}
+      {{- if not $monitorPort }}
+        {{- $monitorPort = dict "name" $portName }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ $deploymentName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
+    {{- if $deploymentConfig.serviceMonitor }}
+    {{- with $deploymentConfig.serviceMonitor.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- end }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $root) | nindent 6 }}
+  endpoints:
+  - port: {{ $monitorPort.name }}
+    {{- if $deploymentConfig.serviceMonitor }}
+    {{- with $deploymentConfig.serviceMonitor.interval }}
+    interval: {{ . }}
+    {{- end }}
+    {{- with $deploymentConfig.serviceMonitor.scrapeTimeout }}
+    scrapeTimeout: {{ . }}
+    {{- end }}
+    {{- with $deploymentConfig.serviceMonitor.relabelings }}
+    relabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with $deploymentConfig.serviceMonitor.metricRelabelings }}
+    metricRelabelings:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- end }}
+  {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml $deploymentConfig.serviceMonitor.namespaceSelector | nindent 4 }}
+  {{- end }}
+{{- end }}

@@ -1,5 +1,5 @@
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
-{{- if $deploymentConfig.pdb }}
+{{- if and $deploymentConfig.pdb (not $deploymentConfig.autoCreatePdb) }}
 apiVersion: policy/v1
 kind: PodDisruptionBudget
 metadata:
