@@ -38,9 +38,12 @@ spec:
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
-      {{/* DEBUG: Before containers */}}
-      containers:{{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
-      {{/* DEBUG: After containers */}}
+      containers:
+      {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 | trimPrefix "\n" }}
+      {{- if $defaultedConfig.volumes }}
+      volumes:
+        {{- toYaml $defaultedConfig.volumes | nindent 8 }}
+      {{- end }}
       {{- $affinity := include "ks-universal.processAffinity" (dict "config" $defaultedConfig "deploymentName" $deploymentName "general" $.Values.deploymentsGeneral) | fromYaml }}
       {{- if $affinity }}
       affinity:

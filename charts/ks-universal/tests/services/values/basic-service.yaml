@@ -1,8 +1,0 @@
-# tests/services/values/basic-service.yaml
-services:
-  web:
-    type: ClusterIP
-    ports:
-      - name: http
-        port: 80
-        targetPort: 8080

@@ -1,0 +1,73 @@
+{{- range $jobName, $jobConfig := .Values.cronJobs }}
+{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ $jobName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 4 }}
+  {{- with $defaultedConfig.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  schedule: {{ $jobConfig.schedule | quote }}
+  {{- if $jobConfig.timezone }}
+  timeZone: {{ $jobConfig.timezone }}
+  {{- end }}
+  {{- if $jobConfig.startingDeadlineSeconds }}
+  startingDeadlineSeconds: {{ $jobConfig.startingDeadlineSeconds }}
+  {{- end }}
+  {{- if hasKey $jobConfig "concurrencyPolicy" }}
+  concurrencyPolicy: {{ $jobConfig.concurrencyPolicy }}
+  {{- end }}
+  {{- if hasKey $jobConfig "failedJobsHistoryLimit" }}
+  failedJobsHistoryLimit: {{ $jobConfig.failedJobsHistoryLimit }}
+  {{- end }}
+  {{- if hasKey $jobConfig "successfulJobsHistoryLimit" }}
+  successfulJobsHistoryLimit: {{ $jobConfig.successfulJobsHistoryLimit }}
+  {{- end }}
+  {{- if hasKey $jobConfig "suspend" }}
+  suspend: {{ $jobConfig.suspend }}
+  {{- end }}
+  jobTemplate:
+    metadata:
+      labels:
+        {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 8 }}
+      {{- with $defaultedConfig.annotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if $defaultedConfig.activeDeadlineSeconds }}
+      activeDeadlineSeconds: {{ $defaultedConfig.activeDeadlineSeconds }}
+      {{- end }}
+      {{- if $defaultedConfig.backoffLimit }}
+      backoffLimit: {{ $defaultedConfig.backoffLimit }}
+      {{- end }}
+      template:
+        metadata:
+          labels:
+            {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 12 }}
+          {{- with $defaultedConfig.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          restartPolicy: {{ $defaultedConfig.restartPolicy | default "Never" }}
+          {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
+          imagePullSecrets:
+            {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 12 }}
+          {{- end }}
+          {{- if $defaultedConfig.securityContext }}
+          securityContext:
+            {{- toYaml $defaultedConfig.securityContext | nindent 12 }}
+          {{- end }}
+          containers:
+          {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 12 | trimPrefix "\n" }}
+          {{- if $defaultedConfig.volumes }}
+          volumes:
+            {{- toYaml $defaultedConfig.volumes | nindent 12 }}
+          {{- end }}
+---
+{{- end }}

@@ -9,6 +9,7 @@ deploymentsGeneral:
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
+    fsGroup: 2000
   
   # Node selector for all deployments
   nodeSelector:
@@ -65,18 +66,135 @@ deploymentsGeneral:
   # Enable soft anti-affinity for all deployments
   autoCreateSoftAntiAffinity: true
 
+# PersistentVolumeClaim definitions
+persistentVolumeClaims:
+  # Example of basic PVC for application data
+  app-data:
+    annotations:
+      volume.beta.kubernetes.io/storage-class: "standard"
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+    storageClassName: standard
+
+  # Example of PVC with specific selector and multiple access modes
+  shared-data:
+    annotations:
+      backup.velero.io/backup-volumes: "true"
+    accessModes:
+      - ReadWriteMany
+    size: 50Gi
+    storageClassName: nfs
+    selector:
+      matchLabels:
+        type: ssd
+        environment: prod
+
+  # Example of PVC for database
+  db-data:
+    annotations:
+      volume.beta.kubernetes.io/storage-class: "premium"
+    accessModes:
+      - ReadWriteOnce
+    size: 100Gi
+    storageClassName: premium-ssd
+
+# Configuration files and secrets
+configs:
+  # Basic application configuration
+  app-config:
+    type: configmap
+    data:
+      APP_ENV: production
+      CACHE_ENABLED: "true"
+      LOG_LEVEL: info
+      application.yaml: |
+        server:
+          port: 8080
+        logging:
+          level:
+            root: INFO
+  
+  # Application secrets
+  app-secrets:
+    type: secret
+    data:
+      database-url: postgresql://user:pass@host:5432/db
+      api-key: c2VjcmV0
+      tls.key: BASE64_ENCODED_KEY
+      tls.crt: BASE64_ENCODED_CERT
+  
+  # Nginx configuration
+  nginx-conf:
+    type: configmap
+    data:
+      nginx.conf: |
+        events {
+          worker_connections  1024;
+        }
+        http {
+          server {
+            listen 80;
+            location / {
+              root /usr/share/nginx/html;
+            }
+          }
+        }
+  
+  # Prometheus rules
+  prometheus-rules:
+    type: configmap
+    data:
+      alerts.yaml: |
+        groups:
+          - name: example
+            rules:
+              - alert: HighRequestLatency
+                expr: http_request_duration_seconds > 0.5
+                for: 10m
+                labels:
+                  severity: warning
+
 # Deployment configurations
 deployments:
+  # Example of a complex application deployment
   app1:
-    # Pod annotations
+    replicas: 3
     podAnnotations:
       prometheus.io/scrape: "true"
+      prometheus.io/port: "9113"
+      vault.hashicorp.com/agent-inject: "true"
     
-    # Override general settings
-    autoCreateServiceMonitor: false
-    autoCreateSoftAntiAffinity: false
+    # Volume configurations
+    volumes:
+      # Mount PVC
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: app-data
+      # Mount ConfigMap as files
+      - name: config-volume
+        configMap:
+          name: app-config
+          items:
+            - key: application.yaml
+              path: config/application.yaml
+      # Mount Secret as files
+      - name: secret-volume
+        secret:
+          secretName: app-secrets
+          items:
+            - key: tls.key
+              path: certs/tls.key
+            - key: tls.crt
+              path: certs/tls.crt
+      # Mount Nginx config
+      - name: nginx-config
+        configMap:
+          name: nginx-conf
+          items:
+            - key: nginx.conf
+              path: nginx.conf
     
-    # Container definitions
     containers:
       main:
         image: nginx
@@ -91,18 +209,60 @@ deployments:
           http-metrics:
             containerPort: 9113
             protocol: TCP
+          https:
+            containerPort: 443
+            protocol: TCP
+        
+        # Volume mounts
+        volumeMounts:
+          # Mount PVC
+          - name: app-data
+            mountPath: /data
+            readOnly: false
+          # Mount ConfigMap
+          - name: config-volume
+            mountPath: /etc/app/config
+            readOnly: true
+          # Mount Secret
+          - name: secret-volume
+            mountPath: /etc/app/certs
+            readOnly: true
+          # Mount Nginx config
+          - name: nginx-config
+            mountPath: /etc/nginx/nginx.conf
+            subPath: nginx.conf
+            readOnly: true
         
         # Environment variables
         env:
+          # Direct value
+          - name: APP_NAME
+            value: "example-app"
+          # From Secret
           - name: DATABASE_URL
             valueFrom:
               secretKeyRef:
                 name: app-secrets
                 key: database-url
-          - name: API_KEY
-            value: "some-api-key"
+          # From ConfigMap
+          - name: LOG_LEVEL
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: LOG_LEVEL
+          # From field
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          # From resource field
+          - name: CPU_REQUEST
+            valueFrom:
+              resourceFieldRef:
+                containerName: main
+                resource: requests.cpu
         
-        # Load environment from configs
+        # Load full configs as env
         envFrom:
           - type: configMap
             configName: app-config
@@ -118,19 +278,59 @@ deployments:
             cpu: 200m
             memory: 256Mi
         
-        # Override default probes
+        # Security context for container
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+              - ALL
+        
+        # Custom probes
         probes:
           livenessProbe:
             httpGet:
               path: /custom-health
               port: http
+              httpHeaders:
+                - name: Custom-Header
+                  value: Health
             initialDelaySeconds: 45
+          readinessProbe:
+            tcpSocket:
+              port: http
+            initialDelaySeconds: 5
+          startupProbe:
+            exec:
+              command:
+                - cat
+                - /tmp/healthy
+            failureThreshold: 30
         
-        # Override default lifecycle hooks
+        # Custom lifecycle hooks
         lifecycle:
+          postStart:
+            exec:
+              command: ["/bin/sh", "-c", "echo done > /tmp/healthy"]
           preStop:
             exec:
               command: ["/bin/sh", "-c", "nginx -s quit"]
+
+      # Sidecar container example
+      metrics:
+        image: nginx-prometheus-exporter
+        imageTag: 0.9.0
+        ports:
+          metrics:
+            containerPort: 9113
+            protocol: TCP
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 100m
+            memory: 128Mi
     
     # Horizontal Pod Autoscaling
     hpa:
@@ -153,6 +353,16 @@ deployments:
       behavior:
         scaleDown:
           stabilizationWindowSeconds: 300
+          policies:
+            - type: Pods
+              value: 1
+              periodSeconds: 60
+        scaleUp:
+          stabilizationWindowSeconds: 0
+          policies:
+            - type: Percent
+              value: 100
+              periodSeconds: 15
     
     # Database migrations
     migrations:
@@ -169,8 +379,9 @@ deployments:
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-role
+        iam.gke.io/gcp-service-account: my-sa@project.iam.gserviceaccount.com
     
-    # ServiceMonitor specific settings (used when autoCreateServiceMonitor is true)
+    # ServiceMonitor configuration
     serviceMonitor:
       labels:
         release: prometheus
@@ -190,41 +401,65 @@ deployments:
           - default
           - monitoring
 
-# Configuration files and secrets
-configs:
-  app-config:
-    type: configmap
-    data:
-      APP_ENV: production
-      CACHE_ENABLED: "true"
-      LOG_LEVEL: info
-  
-  app-secrets:
-    type: secret
-    data:
-      database-url: postgresql://user:pass@host:5432/db
-      api-key: c2VjcmV0
-  
-  nginx-conf:
-    type: configmap
-    data:
-      nginx.conf: |
-        events {
-          worker_connections  1024;
-        }
-        http {
-          server {
-            listen 80;
-            location / {
-              root /usr/share/nginx/html;
-            }
-          }
-        }
+  # Example of stateful application (database)
+  postgres:
+    replicas: 1
+    volumes:
+      - name: db-data
+        persistentVolumeClaim:
+          claimName: db-data
+    containers:
+      main:
+        image: postgres
+        imageTag: 14-alpine
+        ports:
+          postgres:
+            containerPort: 5432
+        volumeMounts:
+          - name: db-data
+            mountPath: /var/lib/postgresql/data
+            subPath: postgres
+        env:
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: postgres-password
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 1000m
+            memory: 2Gi
 
 # Manual service definitions
 services:
+  # Example of basic ClusterIP service
+  app1:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 80
+        targetPort: http
+        protocol: TCP
+      - name: https
+        port: 443
+        targetPort: https
+        protocol: TCP
+      - name: metrics
+        port: 9113
+        targetPort: metrics
+        protocol: TCP
+
+  # Example of LoadBalancer service
   frontend:
     type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
     ports:
       - name: http
         port: 80
@@ -237,16 +472,20 @@ services:
 
 # Ingress definitions
 ingresses:
+  # Basic ingress
   frontend:
     annotations:
       kubernetes.io/ingress.class: nginx
       cert-manager.io/cluster-issuer: letsencrypt-prod
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+      nginx.ingress.kubernetes.io/proxy-body-size: "50m"
     
     ingressClassName: nginx
     
     tls:
       - hosts:
           - example.com
+          - www.example.com
         secretName: example-tls
     
     hosts:
@@ -258,15 +497,372 @@ ingresses:
           - path: /api
             pathType: Prefix
             port: 8080
+      - host: www.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            port: 80
 
 # Jobs (without migrations)
 jobs:
+  # Database backup job
+  db-backup:
+    annotations:
+      "helm.sh/hook": pre-upgrade
+      "helm.sh/hook-weight": "-5"
+    containers:
+      main:
+        image: postgres
+        imageTag: 14-alpine
+        args: 
+          - /bin/sh
+          - -c
+          - |
+            pg_dump -h $DB_HOST -U $DB_USER -d $DB_NAME > /backup/dump.sql
+        env:
+          - name: DB_HOST
+            valueFrom:
+              configMapKeyRef:
+                name: app-config
+                key: db_host
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: db_user
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: db_password
+        volumeMounts:
+          - name: backup
+            mountPath: /backup
+    volumes:
+      - name: backup
+        persistentVolumeClaim:
+          claimName: backup-pvc
+    activeDeadlineSeconds: 600
+    backoffLimit: 3
+    restartPolicy: Never
+
+  # Cleanup job
   cleanup:
     containers:
       main:
         image: cleanup-tool
         imageTag: v1.0
         args: ["--older-than", "7d"]
+        volumeMounts:
+          - name: data
+            mountPath: /data
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: app-data
     activeDeadlineSeconds: 600
     backoffLimit: 3
     restartPolicy: Never
+
+# CronJob examples (если нужно добавить поддержку CronJob)
+cronJobs:
+  # Daily backup cronjob
+  daily-backup:
+    schedule: "0 1 * * *"
+    concurrencyPolicy: Forbid
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    startingDeadlineSeconds: 600
+    suspend: false
+    containers:
+      main:
+        image: backup-tool
+        imageTag: v1.0
+        args: ["--type", "full"]
+        env:
+          - name: BACKUP_LOCATION
+            value: /backup
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: backup-secrets
+                key: aws-key-id
+        volumeMounts:
+          - name: backup-volume
+            mountPath: /backup
+    volumes:
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: backup-data
+
+  # Metrics collection cronjob
+  collect-metrics:
+    schedule: "*/15 * * * *"
+    concurrencyPolicy: Replace
+    containers:
+      main:
+        image: metrics-collector
+        imageTag: v2.1
+        args: ["--save-to", "/data/metrics"]
+        volumeMounts:
+          - name: metrics-volume
+            mountPath: /data/metrics
+    volumes:
+      - name: metrics-volume
+        persistentVolumeClaim:
+          claimName: metrics-data
+
+  # Log rotation cronjob
+  log-rotation:
+    schedule: "0 0 * * *"
+    successfulJobsHistoryLimit: 1
+    containers:
+      main:
+        image: logrotate
+        imageTag: latest
+        volumeMounts:
+          - name: log-volume
+            mountPath: /var/log
+    volumes:
+      - name: log-volume
+        persistentVolumeClaim:
+          claimName: app-data
+
+# Дополнительные примеры конфигураций
+
+# Примеры специфичных аннотаций для облачных провайдеров
+cloudProviderAnnotations:
+  # AWS annotations
+  aws:
+    service:
+      "service.beta.kubernetes.io/aws-load-balancer-type": nlb
+      "service.beta.kubernetes.io/aws-load-balancer-internal": "true"
+      "service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled": "true"
+      "service.beta.kubernetes.io/aws-load-balancer-ssl-cert": "arn:aws:acm:region:account:certificate/certificate-id"
+    ingress:
+      "alb.ingress.kubernetes.io/scheme": "internal"
+      "alb.ingress.kubernetes.io/target-type": "ip"
+      "alb.ingress.kubernetes.io/listen-ports": '[{"HTTP": 80}, {"HTTPS": 443}]'
+
+  # GCP annotations
+  gcp:
+    service:
+      "cloud.google.com/neg": '{"ingress": true}'
+      "cloud.google.com/app-protocols": '{"my-https-port":"HTTPS","my-http-port":"HTTP"}'
+    ingress:
+      "kubernetes.io/ingress.class": "gce"
+      "kubernetes.io/ingress.global-static-ip-name": "my-static-ip"
+
+  # Azure annotations
+  azure:
+    service:
+      "service.beta.kubernetes.io/azure-load-balancer-internal": "true"
+      "service.beta.kubernetes.io/azure-load-balancer-internal-subnet": "my-subnet"
+    ingress:
+      "kubernetes.io/ingress.class": "azure/application-gateway"
+      "appgw.ingress.kubernetes.io/ssl-redirect": "true"
+
+# Примеры типовых initContainers
+initContainersExamples:
+  # Wait for database
+  wait-for-db:
+    image: postgres
+    imageTag: 14-alpine
+    command: ['sh', '-c', 'until pg_isready -h db.default.svc.cluster.local -p 5432; do echo waiting for database; sleep 2; done;']
+  
+  # Download artifacts
+  download-artifacts:
+    image: curlimages/curl
+    imageTag: latest
+    command: ['sh', '-c', 'curl -o /work-dir/artifact.jar ${ARTIFACT_URL}']
+    env:
+      - name: ARTIFACT_URL
+        valueFrom:
+          configMapKeyRef:
+            name: app-config
+            key: artifact-url
+    volumeMounts:
+      - name: work-dir
+        mountPath: /work-dir
+
+  # Fix permissions
+  fix-permissions:
+    image: busybox
+    imageTag: latest
+    command: ['sh', '-c', 'chown -R 1000:1000 /data']
+    volumeMounts:
+      - name: app-data
+        mountPath: /data
+    securityContext:
+      runAsUser: 0
+
+# Примеры дополнительных security-related настроек
+securityExamples:
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 3000
+    fsGroup: 2000
+    supplementalGroups: [1000, 2000, 3000]
+    sysctls:
+      - name: net.core.somaxconn
+        value: "1024"
+    seccompProfile:
+      type: RuntimeDefault
+  
+  containerSecurityContext:
+    capabilities:
+      drop:
+        - ALL
+      add:
+        - NET_BIND_SERVICE
+    allowPrivilegeEscalation: false
+    privileged: false
+    readOnlyRootFilesystem: true
+    runAsNonRoot: true
+    runAsUser: 1000
+
+# Примеры настроек для различных типов приложений
+applicationExamples:
+  # Java application
+  java-app:
+    containers:
+      main:
+        image: openjdk
+        imageTag: 11-jre-slim
+        args:
+          - java
+          - -XX:+UnlockExperimentalVMOptions
+          - -XX:+UseCGroupMemoryLimitForHeap
+          - -Xmx512m
+          - -jar
+          - /app/application.jar
+        env:
+          - name: JAVA_TOOL_OPTIONS
+            value: "-XX:+ExitOnOutOfMemoryError"
+        
+  # Node.js application
+  nodejs-app:
+    containers:
+      main:
+        image: node
+        imageTag: 16-alpine
+        command: ["node"]
+        args: ["server.js"]
+        env:
+          - name: NODE_ENV
+            value: "production"
+          - name: NODE_OPTIONS
+            value: "--max_old_space_size=512"
+
+  # Python application
+  python-app:
+    containers:
+      main:
+        image: python
+        imageTag: 3.9-slim
+        command: ["python"]
+        args: ["app.py"]
+        env:
+          - name: PYTHONUNBUFFERED
+            value: "1"
+          - name: PYTHONPATH
+            value: "/app"
+
+# Примеры настроек для различных баз данных
+databaseExamples:
+  # PostgreSQL
+  postgres:
+    containers:
+      main:
+        image: postgres
+        imageTag: 14-alpine
+        env:
+          - name: POSTGRES_DB
+            value: myapp
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: username
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: password
+          - name: PGDATA
+            value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/postgresql/data
+            subPath: postgres
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: postgres-data
+
+  # MongoDB
+  mongodb:
+    containers:
+      main:
+        image: mongo
+        imageTag: 5.0
+        env:
+          - name: MONGO_INITDB_ROOT_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: mongodb-root-username
+          - name: MONGO_INITDB_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: mongodb-root-password
+        volumeMounts:
+          - name: data
+            mountPath: /data/db
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+          limits:
+            memory: 2Gi
+            cpu: 1000m
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: mongodb-data
+
+  # Redis
+  redis:
+    containers:
+      main:
+        image: redis
+        imageTag: 6.2-alpine
+        args: ["--requirepass", "$(REDIS_PASSWORD)"]
+        env:
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: redis-password
+        volumeMounts:
+          - name: data
+            mountPath: /data
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 200m
+          limits:
+            memory: 1Gi
+            cpu: 500m
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: redis-data

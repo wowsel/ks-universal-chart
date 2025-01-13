@@ -310,18 +310,18 @@ podAntiAffinity:
 
 {{/* Helper for generating containers */}}
 {{- define "ks-universal.containers" }}
-{{/* DEBUG: Start of containers helper */}}
 {{- $root := .root -}}
 {{- $containers := .containers -}}
-{{/* DEBUG: Before containers loop */}}
 {{- range $containerName, $container := $containers }}
-{{/* DEBUG: Processing container: $containerName */}}
 - name: {{ $containerName }}
   image: {{ include "ks-universal.tplValue" (dict "value" $container.image "context" $root) }}:{{ include "ks-universal.tplValue" (dict "value" $container.imageTag "context" $root) }}
-{{/* DEBUG: After container basic fields */}}
   {{- if $container.args }}
   args:
     {{- toYaml $container.args | nindent 4 }}
+  {{- end }}
+  {{- if $container.command }}
+  command:
+    {{- toYaml $container.command | nindent 4 }}
   {{- end }}
   {{- if $container.ports }}
   {{- include "ks-universal.validatePorts" (dict "ports" $container.ports "containerName" $containerName) }}
@@ -330,6 +330,19 @@ podAntiAffinity:
     - name: {{ $portName }}
       containerPort: {{ $port.containerPort }}
       protocol: {{ $port.protocol | default "TCP" }}
+    {{- end }}
+  {{- end }}
+  {{- if $container.volumeMounts }}
+  volumeMounts:
+    {{- range $container.volumeMounts }}
+    - name: {{ .name }}
+      mountPath: {{ .mountPath }}
+      {{- if .subPath }}
+      subPath: {{ .subPath }}
+      {{- end }}
+      {{- if .readOnly }}
+      readOnly: {{ .readOnly }}
+      {{- end }}
     {{- end }}
   {{- end }}
   {{- if or $container.env $container.envFrom }}
@@ -356,6 +369,13 @@ podAntiAffinity:
         secretKeyRef:
           name: {{ include "ks-universal.configName" (dict "root" $root "name" .valueFrom.secretKeyRef.name) }}
           key: {{ .valueFrom.secretKeyRef.key }}
+        {{- else if .valueFrom.fieldRef }}
+        fieldRef:
+          fieldPath: {{ .valueFrom.fieldRef.fieldPath }}
+        {{- else if .valueFrom.resourceFieldRef }}
+        resourceFieldRef:
+          containerName: {{ .valueFrom.resourceFieldRef.containerName }}
+          resource: {{ .valueFrom.resourceFieldRef.resource }}
         {{- end }}
       {{- end }}
     {{- end }}
@@ -364,6 +384,10 @@ podAntiAffinity:
   {{- with $container.resources }}
   resources:
     {{- toYaml . | nindent 4 }}
+  {{- end }}
+  {{- if $container.securityContext }}
+  securityContext:
+    {{- toYaml $container.securityContext | nindent 4 }}
   {{- end }}
   {{- if $container.probes }}
   {{- if $container.probes.livenessProbe }}
@@ -384,7 +408,6 @@ podAntiAffinity:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 {{- end }}
-{{/* DEBUG: End of containers helper */}}
 {{- end }}
 
 {{/* Helper для автоматического создания ingress */}}

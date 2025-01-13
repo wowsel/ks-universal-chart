@@ -1,0 +1,27 @@
+deployments:
+  app-with-volumes:
+    volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+      - name: secret-volume
+        secret:
+          secretName: app-secrets
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: data-pvc
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+        volumeMounts:
+          - name: config-volume
+            mountPath: /etc/config
+          - name: secret-volume
+            mountPath: /etc/secrets
+            readOnly: true
+          - name: data-volume
+            mountPath: /data
