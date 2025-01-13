@@ -1,109 +1,1070 @@
-# ks-universal Helm Chart
+# 🚀 Universal Kubernetes Helm Chart
 
-## Still in development! For testing use only! Do not use in production or anywhere else!
+This Helm chart provides a flexible and feature-rich way to deploy various Kubernetes resources with extensive customization options.
 
-## Overview
-`ks-universal` is a versatile Helm chart designed for deploying applications in Kubernetes. This chart provides a unified interface for managing various Kubernetes resources and supports most common deployment scenarios.
+## Table of Contents
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Typical Application Example](#typical-application-example)
+- [Configuration Reference](#configuration-reference)
+- [Auto-creation Features](#auto-creation-features)
+- [Advanced Features](#advanced-features)
 
-## Features
-- Deployments management with multi-container support
-- Automatic and manual Service creation
-- Configuration management via ConfigMaps and Secrets
-- Ingress traffic management
-- Automatic scaling with HPA (Horizontal Pod Autoscaler)
-- Availability management with PDB (Pod Disruption Budget)
-- Permissions management via ServiceAccounts
-- Jobs and migrations execution
-- Monitoring setup with ServiceMonitor
+## 📑 Chart Structure
 
-## Prerequisites
-- Kubernetes 1.19+
-- Helm 3.0+
-- Prometheus Operator (required for ServiceMonitor functionality)
-
-## Quick Start
-
-1. Add the repository and update:
-```bash
-helm repo add ks-universal https://wowsel.github.io/ks-universal-chart
-helm repo update
-```
-
-2. Install the chart:
-```bash
-helm install my-release ks-universal/ks-universal
-```
-
-## Values File Structure
-
-The chart configuration is divided into the following main sections:
+<details>
+<summary>Full Chart Structure</summary>
 
 ```yaml
-deploymentsGeneral:  # Common settings for all deployments
-  securityContext: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  probes: {}
-  lifecycle: {}
-  autoCreateServiceMonitor: false
-  autoCreateSoftAntiAffinity: false
+# Global deployment settings
+deploymentsGeneral:
+  securityContext: {}      # Pod security context
+  nodeSelector: {}         # Node selection constraints
+  tolerations: []         # Pod tolerations
+  affinity: {}            # Pod affinity rules
+  probes: {}              # Default probe configurations
+  lifecycle: {}           # Default lifecycle hooks
+  autoCreateServiceMonitor: false  # Enable ServiceMonitor creation
+  autoCreateSoftAntiAffinity: false  # Enable soft anti-affinity
 
-deployments: {}      # Individual deployments configuration
+# Generic settings
+generic:
+  extraImagePullSecrets: []  # Global image pull secrets
+  ingressesGeneral: {}       # Global ingress configurations
+  serviceMonitorGeneral: {}  # Global ServiceMonitor settings
 
-configs: {}         # ConfigMaps and Secrets configuration
+# Deployments
+deployments:
+  deployment-name:
+    replicas: 1           # Number of pod replicas
+    containers:           # Container configurations
+      container-name:
+        image: nginx      # Container image
+        imageTag: latest  # Image tag
+        ports:           # Container ports
+          portName:
+            containerPort: 80
+            protocol: TCP
+        resources: {}     # Resource requests and limits
+        probes: {}       # Container probes
+        env: []          # Environment variables
+        envFrom: []      # Environment from ConfigMaps/Secrets
+        volumeMounts: [] # Volume mounts
+        lifecycle: {}    # Container lifecycle hooks
+        command: []      # Container command
+        args: []         # Command arguments
+        securityContext: {} # Container security context
+    
+    # Deployment features
+    autoCreateService: false        # Create Service automatically
+    autoCreateIngress: false        # Create Ingress automatically
+    autoCreateServiceMonitor: false # Create ServiceMonitor
+    autoCreatePdb: false           # Create PDB
+    autoCreateCertificate: false   # Create Certificate
+    autoCreateServiceAccount: false # Create ServiceAccount
+    autoCreateSoftAntiAffinity: false # Enable soft anti-affinity
+    
+    # Additional configurations
+    serviceType: ClusterIP    # Service type when autoCreateService is true
+    ingress: {}              # Ingress configuration
+    certificate: {}          # Certificate configuration
+    serviceMonitor: {}       # ServiceMonitor configuration
+    pdbConfig: {}           # PDB configuration
+    serviceAccount: {}       # ServiceAccount configuration
+    
+    # Scaling and availability
+    hpa:                     # HPA configuration
+      minReplicas: 1
+      maxReplicas: 10
+      metrics: []
+    
+    # Database migrations
+    migrations:
+      enabled: false
+      args: []
+      backoffLimit: 1
+    
+    # Resources
+    volumes: []             # Pod volumes
+    nodeSelector: {}        # Node selection
+    tolerations: []        # Pod tolerations
+    affinity: {}           # Pod affinity rules
+    annotations: {}        # Deployment annotations
+    podAnnotations: {}     # Pod annotations
 
-services: {}        # Explicit Services configuration
+# CronJobs
+cronJobs:
+  cronjob-name:
+    schedule: "* * * * *"
+    timezone: ""
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    concurrencyPolicy: Allow
+    containers: {}     # Same structure as deployment containers
+    volumes: []
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
 
-ingresses: {}       # Ingress resources configuration
+# One-time Jobs
+jobs:
+  job-name:
+    activeDeadlineSeconds: null
+    backoffLimit: 6
+    containers: {}     # Same structure as deployment containers
+    volumes: []
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
 
-jobs: {}            # Jobs configuration
+# Configurations
+configs:
+  config-name:
+    type: configMap    # or "secret"
+    data: {}          # Key-value pairs
 
-generic: {}         # Chart-wide settings
+# Standalone Services
+services:
+  service-name:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 80
+        targetPort: 80
+        protocol: TCP
+
+# PersistentVolumeClaims
+persistentVolumeClaims:
+  pvc-name:
+    accessModes: []
+    storageClassName: ""
+    size: 1Gi
+
+# Standalone Ingresses
+ingresses:
+  ingress-name:
+    annotations: {}
+    ingressClassName: ""
+    tls: []
+    hosts: []
+```
+</details>
+
+- **Resource Types Support**: Deployments, CronJobs, Jobs, Services, Ingresses, ConfigMaps/Secrets, PVCs, HPAs, PDBs, ServiceMonitors, ServiceAccounts, Certificates
+- **Auto-creation**: Automatic creation of associated resources (Services, Ingress, Certificates, ServiceMonitors, PDBs)
+- **Validation**: Built-in validation system for configuration correctness
+- **Monitoring**: Native support for Prometheus monitoring
+- **Security**: SSL certificate management via cert-manager
+- **Multi-container**: Support for multi-container pods
+- **Configuration**: Flexible environment variables and config mounting
+
+## 🔧 Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.0+
+- cert-manager (for certificate management)
+- Prometheus Operator (for monitoring)
+
+## 🚀 Quick Start
+
+<details>
+<summary>Basic Deployment Example</summary>
+
+```yaml
+deployments:
+  my-app:
+    replicas: 2
+    autoCreateService: true
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+```
+</details>
+
+## Typical Application Example
+
+Let's look at a complete example of deploying a typical application with frontend, backend, and database migrations.
+
+<details>
+<summary>Complete Application Stack</summary>
+
+```yaml
+# Global configurations
+deploymentsGeneral:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+  probes:
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: http
+      initialDelaySeconds: 5
+
+# ConfigMaps and Secrets
+configs:
+  app-config:
+    type: configMap
+    data:
+      config.yaml: |
+        environment: production
+        log_level: info
+        redis:
+          host: redis-master
+          port: 6379
+        features:
+          metrics: true
+          tracing: true
+      nginx.conf: |
+        worker_processes auto;
+        events {
+          worker_connections 1024;
+        }
+  app-secrets:
+    type: secret
+    data:
+      DB_PASSWORD: "your-db-password"
+      API_KEY: "your-api-key"
+      REDIS_PASSWORD: "redis-password"
+
+# Redis service for caching
+deployments:
+  redis:
+    replicas: 1
+    autoCreateService: true
+    autoCreatePdb: true
+    pdbConfig:
+      minAvailable: 1
+    containers:
+      main:
+        image: redis
+        imageTag: "6.2-alpine"
+        ports:
+          redis:
+            containerPort: 6379
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+          - name: redis-data
+            mountPath: /data
+    volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-data
+
+# Backend API service
+  backend-api:
+    replicas: 3
+    autoCreateService: true
+    autoCreateIngress: true
+    autoCreateServiceMonitor: true
+    autoCreateSoftAntiAffinity: true
+    migrations:
+      enabled: true
+      args:
+        - "migrate"
+        - "up"
+      backoffLimit: 3
+    containers:
+      main:
+        image: backend-api
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+          metrics:
+            containerPort: 9090
+        env:
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: DB_PASSWORD
+          - name: REDIS_HOST
+            value: redis
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: REDIS_PASSWORD
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+          - name: tmp-data
+            mountPath: /tmp
+    volumes:
+      - name: tmp-data
+        emptyDir: {}
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      hosts:
+        - host: api.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    hpa:
+      minReplicas: 3
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 80
+    serviceMonitor:
+      endpoints:
+        - port: metrics
+          interval: 15s
+
+  # Frontend application
+  frontend:
+    replicas: 2
+    autoCreateService: true
+    autoCreateIngress: true
+    autoCreateCertificate: true
+    autoCreateSoftAntiAffinity: true
+    containers:
+      main:
+        image: frontend
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 80
+        env:
+          - name: API_URL
+            value: https://api.example.com
+          - name: NODE_ENV
+            value: production
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+          - name: nginx-config
+            mountPath: /etc/nginx/nginx.conf
+            subPath: nginx.conf
+    volumes:
+      - name: nginx-config
+        configMap:
+          name: app-config
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+      hosts:
+        - host: app.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      ingressClassName: nginx
+    certificate:
+      clusterIssuer: letsencrypt-prod
+```
+</details>
+
+## 📖 Configuration Reference
+
+### Deployment Configuration
+
+<details>
+<summary>Basic Deployment Settings</summary>
+
+```yaml
+deployments:
+  my-deployment:
+    replicas: 2                    # Number of replicas
+    autoCreateService: true        # Automatically create a service
+    autoCreateIngress: true        # Automatically create an ingress
+    autoCreateServiceMonitor: true # Create Prometheus ServiceMonitor
+    containers:
+      main:
+        image: myapp              # Container image
+        imageTag: v1.0.0          # Image tag
+        ports:
+          http:
+            containerPort: 8080   # Container port
+```
+</details>
+
+<details>
+<summary>Advanced Deployment Settings</summary>
+
+```yaml
+deployments:
+  my-deployment:
+    # Migration configuration
+    migrations:
+      enabled: true
+      args:
+        - "migrate"
+        - "up"
+      backoffLimit: 3
+
+    # HPA configuration
+    hpa:
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 80
+
+    # PDB configuration
+    autoCreatePdb: true
+    pdbConfig:
+      minAvailable: 1
+
+    # Container configuration
+    containers:
+      main:
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        probes:
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: http
+            initialDelaySeconds: 5
+```
+</details>
+
+### Configuration and Secrets
+
+<details>
+<summary>ConfigMaps and Secrets</summary>
+
+```yaml
+configs:
+  app-config:
+    type: configMap
+    data:
+      config.yaml: |
+        key1: value1
+        key2: value2
+
+  app-secrets:
+    type: secret
+    data:
+      API_KEY: "secret-key"
+      DB_PASSWORD: "db-password"
+```
+</details>
+
+### Environment Variables
+
+<details>
+<summary>Environment Variables Configuration</summary>
+
+```yaml
+containers:
+  main:
+    env:
+      # Direct value
+      - name: ENVIRONMENT
+        value: "production"
+      
+      # From ConfigMap
+      - name: CONFIG_KEY
+        valueFrom:
+          configMapKeyRef:
+            name: app-config
+            key: config_key
+      
+      # From Secret
+      - name: API_KEY
+        valueFrom:
+          secretKeyRef:
+            name: app-secrets
+            key: API_KEY
+
+    # Load all values from ConfigMap/Secret
+    envFrom:
+      - type: configMap
+        configName: app-config
+      - type: secret
+        configName: app-secrets
+```
+</details>
+
+### Volume Mounts
+
+<details>
+<summary>Volume Configuration</summary>
+
+```yaml
+deployments:
+  my-deployment:
+    containers:
+      main:
+        volumeMounts:
+          - name: config-volume
+            mountPath: /config
+            readOnly: true
+          - name: data-volume
+            mountPath: /data
+    
+    volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: data-pvc
+```
+</details>
+
+## Auto-creation Features
+
+### Service Auto-creation
+
+<details>
+<summary>Service Configuration</summary>
+
+```yaml
+deployments:
+  my-deployment:
+    autoCreateService: true
+    containers:
+      main:
+        ports:
+          http:
+            containerPort: 8080
+          https:
+            containerPort: 8443
+```
+</details>
+
+### Ingress Auto-creation
+
+<details>
+<summary>Ingress Configuration</summary>
+
+```yaml
+deployments:
+  my-deployment:
+    autoCreateIngress: true
+    ingress:
+      hosts:
+        - host: myapp.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      annotations:
+        nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+```
+</details>
+
+### Certificate Auto-creation
+
+<details>
+<summary>Certificate Configuration</summary>
+
+```yaml
+deployments:
+  my-deployment:
+    autoCreateCertificate: true
+    certificate:
+      clusterIssuer: letsencrypt-prod
+    ingress:
+      hosts:
+        - host: myapp.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+```
+</details>
+
+## Scheduled Tasks
+
+### CronJobs
+
+<details>
+<summary>CronJob Configuration</summary>
+
+```yaml
+cronJobs:
+  backup-job:
+    schedule: "0 0 * * *"  # Run daily at midnight
+    timezone: "UTC"        # Timezone for the schedule
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    concurrencyPolicy: Forbid
+    containers:
+      main:
+        image: backup-tool
+        imageTag: v1.0.0
+        env:
+          - name: BACKUP_PATH
+            value: "/backup"
+          - name: AWS_ACCESS_KEY_ID
+            valueFrom:
+              secretKeyRef:
+                name: backup-secrets
+                key: aws-key
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+    volumes:
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: backup-pvc
+```
+</details>
+
+### One-time Jobs
+
+<details>
+<summary>Job Configuration</summary>
+
+```yaml
+jobs:
+  data-import:
+    activeDeadlineSeconds: 3600
+    backoffLimit: 3
+    # Run job on specific nodes
+    nodeSelector:
+      job-type: batch
+    containers:
+      main:
+        image: data-import
+        imageTag: v1.0.0
+        command: ["python", "/app/import.py"]
+        args: ["--mode", "full"]
+        env:
+          - name: INPUT_FILE
+            value: "/data/input.csv"
+          - name: DB_CONNECTION
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: connection-string
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+          - name: import-data
+            mountPath: /data
+    volumes:
+      - name: import-data
+        persistentVolumeClaim:
+          claimName: import-pvc
+```
+</details>
+
+## 🛠️ Advanced Features
+
+### Database Migrations
+
+<details>
+<summary>Database Migration Configuration</summary>
+
+```yaml
+deployments:
+  my-app:
+    migrations:
+      enabled: true
+      args:
+        - "migrate"
+        - "up"
+      backoffLimit: 3
+    containers:
+      main:
+        image: myapp
+        imageTag: v1.0.0
+        env:
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: DB_PASSWORD
+```
+</details>
+
+### Prometheus Monitoring
+
+<details>
+<summary>Monitoring Configuration</summary>
+
+```yaml
+deployments:
+  my-app:
+    autoCreateServiceMonitor: true
+    containers:
+      main:
+        ports:
+          http-metrics:
+            containerPort: 9090
+    serviceMonitor:
+      endpoints:
+        - port: http-metrics
+          interval: 15s
+```
+</details>
+
+### Horizontal Pod Autoscaling
+
+<details>
+<summary>HPA Configuration</summary>
+
+```yaml
+deployments:
+  my-app:
+    hpa:
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 80
+```
+</details>
+
+### 🎯 Affinity Configuration
+
+The chart provides flexible ways to configure pod affinity rules, including automatic soft anti-affinity and custom node affinity settings.
+
+<details>
+<summary>Automatic Soft Anti-Affinity</summary>
+
+Enable automatic soft anti-affinity to spread pods across nodes:
+
+```yaml
+deployments:
+  my-app:
+    autoCreateSoftAntiAffinity: true
 ```
 
-## Default Configuration
+This will automatically create a podAntiAffinity rule that attempts to schedule pods on different nodes with a preferred (soft) constraint.
+</details>
 
-By default, the chart creates no resources. All resources must be explicitly defined in the values.yaml file.
+<details>
+<summary>Custom Node Affinity</summary>
 
-## Chart Upgrade
+Configure custom node affinity rules for specific node selection:
 
-To upgrade an installed release:
+```yaml
+deployments:
+  my-app:
+    nodeSelector:
+      node-type: worker
+      kubernetes.io/os: linux
+    
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: kubernetes.io/instance-type
+                  operator: In
+                  values:
+                    - m5.large
+                    - m5.xlarge
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+                - key: node-role
+                  operator: In
+                  values:
+                    - worker
+```
+</details>
 
-```bash
-helm upgrade my-release ks-universal/ks-universal
+<details>
+<summary>Combined Affinity Rules</summary>
+
+You can combine different types of affinity rules:
+
+```yaml
+deployments:
+  my-app:
+    autoCreateSoftAntiAffinity: true
+    affinity:
+      nodeAffinity:
+        requiredDuringSchedulingIgnoredDuringExecution:
+          nodeSelectorTerms:
+            - matchExpressions:
+                - key: node-type
+                  operator: In
+                  values:
+                    - worker
+      podAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  app.kubernetes.io/name: cache
+              topologyKey: kubernetes.io/hostname
 ```
 
-## Uninstalling
+Note: When `autoCreateSoftAntiAffinity` is enabled along with custom pod anti-affinity rules, both will be merged in the final configuration.
+</details>
 
-To delete an installed release:
+<details>
+<summary>PDB Configuration</summary>
 
-```bash
-helm uninstall my-release
+```yaml
+deployments:
+  my-app:
+    autoCreatePdb: true
+    pdbConfig:
+      minAvailable: 1
+      # or
+      maxUnavailable: 1
+```
+</details>
+
+## ⚙️ Global Settings
+
+### Deployments General Configuration
+
+<details>
+<summary>Global Deployment Settings</summary>
+
+The `deploymentsGeneral` section allows you to set default configurations that will be applied to all deployments:
+
+```yaml
+deploymentsGeneral:
+  # Default security context for all pods
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+
+  # Default node selection
+  nodeSelector:
+    kubernetes.io/os: linux
+    node-type: application
+
+  # Default tolerations
+  tolerations:
+    - key: "node-role"
+      operator: "Equal"
+      value: "infrastructure"
+      effect: "NoSchedule"
+
+  # Default probes configuration
+  probes:
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    startupProbe:
+      httpGet:
+        path: /startup
+        port: http
+      failureThreshold: 30
+      periodSeconds: 10
+
+  # Default affinity rules
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            topologyKey: "kubernetes.io/hostname"
+
+  # Default lifecycle hooks
+  lifecycle:
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 10"]
 ```
 
-## Documentation Structure
+Each deployment can override these settings with its own configuration.
+</details>
 
-Detailed documentation for each resource type is available in separate files:
-- [Deployments](./docs/deployments.md)
-- [Services](./docs/services.md)
-- [Configs](./docs/configs.md)
-- [Ingress](./docs/ingress.md)
-- [HPA](./docs/hpa.md)
-- [PDB](./docs/pdb.md)
-- [ServiceAccount](./docs/serviceaccount.md)
-- [Jobs](./docs/jobs.md)
-- [ServiceMonitor](./docs/servicemonitor.md)
-- [Dynamic Values Support](./docs/dynamic-values.md)
+### Generic Settings
 
-## Troubleshooting
-- [Troubleshooting](./docs/troubleshooting.md)
+<details>
+<summary>Generic Configuration</summary>
 
-## Use cases
-- [Use-cases](./docs/use-cases.md)
+The `generic` section contains global settings that affect multiple resource types:
 
-## Contributing
-Contributions are welcome! Please read our [Contributing Guide](./CONTRIBUTING.md) for details on our code of conduct and the process for submitting pull requests.
+```yaml
+generic:
+  # Global image pull secrets
+  extraImagePullSecrets:
+    - name: registry-secret
+    - name: private-registry
 
-## License
-Apache License 2.0
+  # Ingress default settings
+  ingressesGeneral:
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    ingressClassName: nginx
+
+  # Service monitor defaults
+  serviceMonitorGeneral:
+    labels:
+      prometheus: kube-prometheus
+    interval: 30s
+```
+</details>
+
+## ❓ FAQ
+
+<details>
+<summary>How do I expose my application externally?</summary>
+
+Use autoCreateIngress with appropriate host configuration:
+```yaml
+deployments:
+  my-app:
+    autoCreateIngress: true
+    autoCreateCertificate: true  # If you need HTTPS
+    ingress:
+      hosts:
+        - host: myapp.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+```
+</details>
+
+<details>
+<summary>How do I configure database migrations?</summary>
+
+Enable migrations in your deployment:
+```yaml
+deployments:
+  my-app:
+    migrations:
+      enabled: true
+      args:
+        - "migrate"
+        - "up"
+      backoffLimit: 3
+```
+</details>
+
+<details>
+<summary>How do I scale my application?</summary>
+
+Use HPA configuration:
+```yaml
+deployments:
+  my-app:
+    hpa:
+      minReplicas: 2
+      maxReplicas: 10
+      metrics:
+        - type: Resource
+          resource:
+            name: cpu
+            target:
+              type: Utilization
+              averageUtilization: 80
+```
+</details>
+
+<details>
+<summary>How do I add custom annotations to my resources?</summary>
+
+Add annotations under the specific resource:
+```yaml
+deployments:
+  my-app:
+    annotations:
+      custom.annotation/value: "my-value"
+    podAnnotations:
+      custom.pod/value: "pod-value"
+```
+</details>
+
+<details>
+<summary>How do I configure persistent storage?</summary>
+
+Create PVC and add volume configuration:
+```yaml
+persistentVolumeClaims:
+  data-storage:
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+
+deployments:
+  my-app:
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: data-storage
+    containers:
+      main:
+        volumeMounts:
+          - name: data
+            mountPath: /data
+```
+</details>
+
+
+<details>
+<summary>PDB Configuration</summary>
+
+```yaml
+deployments:
+  my-app:
+    autoCreatePdb: true
+    pdbConfig:
+      minAvailable: 1
+      # or
+      maxUnavailable: 1
+```
+</details>

@@ -1,6 +1,6 @@
 configs:
   app-config:
-    type: configmap
+    type: configMap
     data:
       APP_ENV: production
       CACHE_ENABLED: "true"
@@ -13,7 +13,7 @@ configs:
       api-key: c2VjcmV0
   
   nginx-conf:
-    type: configmap
+    type: configMap
     data:
       nginx.conf: |
         events {

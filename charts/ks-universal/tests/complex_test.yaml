@@ -9,6 +9,8 @@ templates:
   - service.yaml
   - serviceaccount.yaml
   - servicemonitor.yaml
+  - cronjob.yaml
+  - certificate.yaml
 
 tests:
   - it: should properly handle global settings
@@ -218,3 +220,74 @@ tests:
         equal:
           path: spec.backoffLimit
           value: 3
+
+  - it: should properly handle certificate creation
+    values:
+      - ./values/certificate-config.yaml
+    asserts:
+      - template: deployment.yaml
+        documentIndex: 2  # Certificate должен быть третьим документом
+        equal:
+          path: kind
+          value: Certificate
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.secretName
+          value: app-with-cert-tls
+      - template: deployment.yaml
+        documentIndex: 2
+        contains:
+          path: spec.dnsNames
+          content: secure-app.example.com
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.issuerRef.kind
+          value: ClusterIssuer
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.issuerRef.name
+          value: letsencrypt-prod
+
+  - it: should create soft anti-affinity rules
+    values:
+      - ./values/soft-antiaffinity.yaml
+    asserts:
+      - template: deployment.yaml
+        exists:
+          path: spec.template.spec.affinity.podAntiAffinity
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].weight
+          value: 100
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.affinity.podAntiAffinity.preferredDuringSchedulingIgnoredDuringExecution[0].podAffinityTerm.topologyKey
+          value: kubernetes.io/hostname
+
+  - it: should properly configure cronjob
+    values:
+      - ./values/cronjob-config.yaml
+    asserts:
+      - template: cronjob.yaml
+        equal:
+          path: kind
+          value: CronJob
+      - template: cronjob.yaml
+        equal:
+          path: spec.schedule
+          value: "0 * * * *"
+      - template: cronjob.yaml
+        equal:
+          path: spec.successfulJobsHistoryLimit
+          value: 3
+      - template: cronjob.yaml
+        equal:
+          path: spec.failedJobsHistoryLimit
+          value: 1
+      - template: cronjob.yaml
+        equal:
+          path: spec.concurrencyPolicy
+          value: Forbid
