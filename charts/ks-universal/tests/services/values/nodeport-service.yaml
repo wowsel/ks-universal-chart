@@ -1,9 +1,0 @@
-# tests/services/values/nodeport-service.yaml
-services:
-  monitoring:
-    type: NodePort
-    ports:
-      - name: metrics
-        port: 9090
-        targetPort: 9090
-        nodePort: 30090

@@ -1,0 +1,21 @@
+cronJobs:
+  backup-job:
+    schedule: "0 * * * *"
+    timezone: "UTC"
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    concurrencyPolicy: Forbid
+    containers:
+      main:
+        image: backup-tool
+        imageTag: v1.0.0
+        env:
+          - name: BACKUP_PATH
+            value: "/backup"
+        volumeMounts:
+          - name: backup-volume
+            mountPath: /backup
+    volumes:
+      - name: backup-volume
+        persistentVolumeClaim:
+          claimName: backup-pvc

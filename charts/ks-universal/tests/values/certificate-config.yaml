@@ -1,0 +1,20 @@
+deployments:
+  app-with-cert:
+    autoCreateIngress: true
+    autoCreateCertificate: true
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
+    ingress:
+      hosts:
+        - host: secure-app.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    certificate:
+      clusterIssuer: letsencrypt-prod
+      issuer: ""  # Оставляем пустым, так как используем clusterIssuer

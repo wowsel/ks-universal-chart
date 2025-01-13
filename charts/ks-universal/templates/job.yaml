@@ -1,4 +1,4 @@
-{{/* Обработка обычных jobs */}}
+{{- include "ks-universal.validate" . -}}
 {{- range $jobName, $jobConfig := .Values.jobs }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
 apiVersion: batch/v1
@@ -28,12 +28,21 @@ spec:
       {{- end }}
     spec:
       restartPolicy: {{ $defaultedConfig.restartPolicy | default "Never" }}
-      {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets (not (empty $.Values.generic.extraImagePullSecrets)) }}
+      {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- if $defaultedConfig.securityContext }}
+      securityContext:
+        {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
+      {{- end }}
       containers:
-        {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 }}
+      {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 | trimPrefix "\n" }}
+      {{- if $defaultedConfig.volumes }}
+      volumes:
+        {{- toYaml $defaultedConfig.volumes | nindent 8 }}
+      {{- end }}
+---
 {{- end }}
 
 {{/* Обработка миграций */}}
@@ -59,17 +68,25 @@ spec:
         {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" (printf "%s-migrations" $deploymentName)) | nindent 8 }}
     spec:
       restartPolicy: Never
-      {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets (not (empty $.Values.generic.extraImagePullSecrets)) }}
+      {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}
       {{- end }}
+      {{- if $defaultedConfig.securityContext }}
+      securityContext:
+        {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
+      {{- end }}
       containers:
-        {{- $containersWithArgs := dict }}
-        {{- range $containerName, $container := $defaultedConfig.containers }}
-        {{- $newContainer := merge $container (dict "args" $deploymentConfig.migrations.args) }}
-        {{- $_ := set $containersWithArgs $containerName $newContainer }}
-        {{- end }}
-        {{- include "ks-universal.containers" (dict "root" $ "containers" $containersWithArgs) | nindent 8 }}
+      {{- $containersWithArgs := dict }}
+      {{- range $containerName, $container := $defaultedConfig.containers }}
+      {{- $newContainer := merge $container (dict "args" $deploymentConfig.migrations.args) }}
+      {{- $_ := set $containersWithArgs $containerName $newContainer }}
+      {{- end }}
+      {{- include "ks-universal.containers" (dict "root" $ "containers" $containersWithArgs) | nindent 8 | trimPrefix "\n" }}
+      {{- if $defaultedConfig.volumes }}
+      volumes:
+        {{- toYaml $defaultedConfig.volumes | nindent 8 }}
+      {{- end }}
 {{- end }}
 ---
 {{- end }}

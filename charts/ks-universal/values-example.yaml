@@ -1,38 +1,10 @@
-# Global settings 
-generic:
-  extraImagePullSecrets:
-    - name: my-registry-secret
-
-# General settings for all deployments
+# Global configurations for all deployments
 deploymentsGeneral:
-  # Security context for all pods
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
-  
-  # Node selector for all deployments
   nodeSelector:
     kubernetes.io/os: linux
-  
-  # Tolerations for all deployments
-  tolerations:
-    - key: "node-role"
-      operator: "Equal"
-      value: "infrastructure"
-      effect: "NoSchedule"
-  
-  # Affinity settings for all deployments
-  affinity:
-    nodeAffinity:
-      requiredDuringSchedulingIgnoredDuringExecution:
-        nodeSelectorTerms:
-          - matchExpressions:
-            - key: kubernetes.io/os
-              operator: In
-              values:
-                - linux
-  
-  # Default probes for all containers
   probes:
     livenessProbe:
       httpGet:
@@ -45,96 +17,87 @@ deploymentsGeneral:
         path: /ready
         port: http
       initialDelaySeconds: 5
-      periodSeconds: 5
-    startupProbe:
-      httpGet:
-        path: /health
-        port: http
-      failureThreshold: 30
       periodSeconds: 10
-  
-  # Default lifecycle hooks for all containers
-  lifecycle:
-    preStop:
-      exec:
-        command: ["/bin/sh", "-c", "sleep 10"]
-  
-  # Enable ServiceMonitor creation for all deployments with http-metrics port
-  autoCreateServiceMonitor: true
-  
-  # Enable soft anti-affinity for all deployments
-  autoCreateSoftAntiAffinity: true
 
-# Deployment configurations
+# Generic configurations
+generic:
+  extraImagePullSecrets:
+    - name: registry-secret
+
+# Configurations and Secrets
+configs:
+  app-config:
+    type: configMap
+    data:
+      config.yaml: |
+        environment: production
+        log_level: info
+        features:
+          feature1: true
+          feature2: false
+  app-secrets:
+    type: secret
+    data:
+      API_KEY: "your-api-key"
+      DB_PASSWORD: "your-db-password"
+
+# Main application deployment
 deployments:
-  app1:
-    # Pod annotations
-    podAnnotations:
-      prometheus.io/scrape: "true"
-    
-    # Override general settings
-    autoCreateServiceMonitor: false
-    autoCreateSoftAntiAffinity: false
-    
-    # Container definitions
+  backend-api:
+    replicas: 3
+    autoCreateService: true
+    autoCreateIngress: true
+    autoCreateCertificate: true
+    autoCreateServiceMonitor: true
+    autoCreatePdb: true
+    pdbConfig:
+      minAvailable: 2
+    certificate:
+      clusterIssuer: letsencrypt-prod
     containers:
       main:
-        image: nginx
-        imageTag: 1.21
-        args: ["--config", "/etc/nginx/nginx.conf"]
-        
-        # Container ports
-        ports:
-          http:
-            containerPort: 80
-            protocol: TCP
-          http-metrics:
-            containerPort: 9113
-            protocol: TCP
-        
-        # Environment variables
-        env:
-          - name: DATABASE_URL
-            valueFrom:
-              secretKeyRef:
-                name: app-secrets
-                key: database-url
-          - name: API_KEY
-            value: "some-api-key"
-        
-        # Load environment from configs
-        envFrom:
-          - type: configMap
-            configName: app-config
-          - type: secret
-            configName: app-secrets
-        
-        # Resource requirements
+        image: backend-api
+        imageTag: v1.0.0
         resources:
           requests:
             cpu: 100m
-            memory: 128Mi
-          limits:
-            cpu: 200m
             memory: 256Mi
-        
-        # Override default probes
-        probes:
-          livenessProbe:
-            httpGet:
-              path: /custom-health
-              port: http
-            initialDelaySeconds: 45
-        
-        # Override default lifecycle hooks
-        lifecycle:
-          preStop:
-            exec:
-              command: ["/bin/sh", "-c", "nginx -s quit"]
-    
-    # Horizontal Pod Autoscaling
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        ports:
+          http:
+            containerPort: 8080
+            protocol: TCP
+          http-metrics:
+            containerPort: 9090
+        env:
+          - name: CONFIG_PATH
+            value: /config/config.yaml
+          - name: API_KEY
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: API_KEY
+        envFrom:
+          - type: configMap
+            configName: app-config
+        volumeMounts:
+          - name: config-volume
+            mountPath: /config
+            readOnly: true
+    volumes:
+      - name: config-volume
+        configMap:
+          name: app-config
+    ingress:
+      hosts:
+        - host: api.example.com
+          paths:
+            - path: /
+              pathType: Prefix
     hpa:
-      minReplicas: 2
+      minReplicas: 3
       maxReplicas: 10
       metrics:
         - type: Resource
@@ -143,130 +106,94 @@ deployments:
             target:
               type: Utilization
               averageUtilization: 80
-        - type: Pods
-          pods:
-            metric:
-              name: packets-per-second
-            target:
-              type: AverageValue
-              averageValue: 1k
-      behavior:
-        scaleDown:
-          stabilizationWindowSeconds: 300
-    
-    # Database migrations
-    migrations:
-      enabled: true
-      args: ["db:migrate"]
-      backoffLimit: 3
-    
-    # Pod Disruption Budget
-    pdb:
-      minAvailable: 1
-      # or maxUnavailable: 1
-    
-    # Service Account
-    serviceAccount:
-      annotations:
-        eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-role
-    
-    # ServiceMonitor specific settings (used when autoCreateServiceMonitor is true)
     serviceMonitor:
-      labels:
-        release: prometheus
-      interval: 30s
-      scrapeTimeout: 10s
-      path: /metrics
-      scheme: http
-      relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_label_app]
-          targetLabel: app
-      metricRelabelings:
-        - sourceLabels: [__name__]
-          regex: 'go_.*'
-          action: drop
-      namespaceSelector:
-        matchNames:
-          - default
-          - monitoring
-
-# Configuration files and secrets
-configs:
-  app-config:
-    type: configmap
-    data:
-      APP_ENV: production
-      CACHE_ENABLED: "true"
-      LOG_LEVEL: info
+      endpoints:
+        - port: http-metrics
+          interval: 15s
   
-  app-secrets:
-    type: secret
-    data:
-      database-url: postgresql://user:pass@host:5432/db
-      api-key: c2VjcmV0
-  
-  nginx-conf:
-    type: configmap
-    data:
-      nginx.conf: |
-        events {
-          worker_connections  1024;
-        }
-        http {
-          server {
-            listen 80;
-            location / {
-              root /usr/share/nginx/html;
-            }
-          }
-        }
-
-# Manual service definitions
-services:
   frontend:
-    type: LoadBalancer
+    replicas: 2
+    autoCreateService: true
+    autoCreateIngress: true
+    autoCreateCertificate: true
+    containers:
+      main:
+        image: frontend
+        imageTag: v1.0.0
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        ports:
+          http:
+            containerPort: 80
+    ingress:
+      hosts:
+        - host: app.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+
+# Scheduled jobs
+cronJobs:
+  backup:
+    schedule: "0 0 * * *"
+    containers:
+      main:
+        image: backup-job
+        imageTag: v1.0.0
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        env:
+          - name: BACKUP_PATH
+            value: /backup
+
+# One-time jobs
+jobs:
+  db-migration:
+    containers:
+      main:
+        image: migration-job
+        imageTag: v1.0.0
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+        env:
+          - name: DB_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: app-secrets
+                key: DB_PASSWORD
+
+# Standalone services
+services:
+  external-service:
+    type: ClusterIP
     ports:
       - name: http
         port: 80
         targetPort: 8080
-        protocol: TCP
-      - name: https
-        port: 443
-        targetPort: 8443
-        protocol: TCP
 
-# Ingress definitions
+# Persistent Volume Claims
+persistentVolumeClaims:
+  data-storage:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: standard
+    size: 10Gi
+
+# Standalone ingresses
 ingresses:
-  frontend:
-    annotations:
-      kubernetes.io/ingress.class: nginx
-      cert-manager.io/cluster-issuer: letsencrypt-prod
-    
-    ingressClassName: nginx
-    
-    tls:
-      - hosts:
-          - example.com
-        secretName: example-tls
-    
+  external:
     hosts:
-      - host: example.com
+      - host: external.example.com
         paths:
           - path: /
             pathType: Prefix
             port: 80
-          - path: /api
-            pathType: Prefix
-            port: 8080
-
-# Jobs (without migrations)
-jobs:
-  cleanup:
-    containers:
-      main:
-        image: cleanup-tool
-        imageTag: v1.0
-        args: ["--older-than", "7d"]
-    activeDeadlineSeconds: 600
-    backoffLimit: 3
-    restartPolicy: Never

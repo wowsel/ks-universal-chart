@@ -1,0 +1,27 @@
+{{- include "ks-universal.validate" . -}}
+{{- range $pvcName, $pvcConfig := .Values.persistentVolumeClaims }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ $pvcName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $pvcName) | nindent 4 }}
+  {{- with $pvcConfig.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml $pvcConfig.accessModes | nindent 4 }}
+  {{- if $pvcConfig.storageClassName }}
+  storageClassName: {{ $pvcConfig.storageClassName }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $pvcConfig.size }}
+  {{- with $pvcConfig.selector }}
+  selector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+---
+{{- end }}
