@@ -1,3 +1,4 @@
+{{- include "ks-universal.validate" . -}}
 {{- if .Values.deployments }}
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
@@ -90,6 +91,11 @@ imagePullSecrets:
 {{/* Auto-create ServiceMonitor if enabled */}}
 {{- if $deploymentConfig.autoCreateServiceMonitor }}
 {{- include "ks-universal.serviceMonitor" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
+---
+{{- end }}
+
+{{- if $deploymentConfig.autoCreateCertificate }}
+{{- include "ks-universal.autoCertificate" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
 ---
 {{- end }}
 

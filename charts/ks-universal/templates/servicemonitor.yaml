@@ -15,7 +15,7 @@ spec:
     matchLabels:
       {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $) | nindent 6 }}
   endpoints:
-  - port: {{ $deploymentConfig.serviceMonitorPort | default "http-metrics" }}
+  - port: {{ include "ks-universal.findMetricsPort" (dict "containers" $deploymentConfig.containers) }}
     {{- with $deploymentConfig.serviceMonitor.interval }}
     interval: {{ . }}
     {{- end }}

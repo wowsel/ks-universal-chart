@@ -423,17 +423,36 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
-  {{- with $defaultedIngress.annotations }}
   annotations:
+    {{- with $defaultedIngress.annotations }}
     {{- toYaml . | nindent 4 }}
-  {{- end }}
+    {{- end }}
+    {{- if $deploymentConfig.autoCreateCertificate }}
+    {{- if and $deploymentConfig.certificate $deploymentConfig.certificate.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $deploymentConfig.certificate.clusterIssuer }}
+    {{- else if and $deploymentConfig.certificate $deploymentConfig.certificate.issuer }}
+    cert-manager.io/issuer: {{ $deploymentConfig.certificate.issuer }}
+    {{- else }}
+    cert-manager.io/cluster-issuer: letsencrypt
+    {{- end }}
+    {{- end }}
 spec:
   {{- if $defaultedIngress.ingressClassName }}
   ingressClassName: {{ $defaultedIngress.ingressClassName }}
   {{- end }}
-  {{- with $defaultedIngress.tls }}
+  {{- if or $defaultedIngress.tls $deploymentConfig.autoCreateCertificate }}
   tls:
+    {{- if $deploymentConfig.autoCreateCertificate }}
+    - secretName: {{ printf "%s-tls" $deploymentName }}
+      hosts:
+      {{- range $defaultedIngress.hosts }}
+        - {{ .host }}
+      {{- end }}
+    {{- else }}
+    {{- with $defaultedIngress.tls }}
     {{- toYaml . | nindent 4 }}
+    {{- end }}
+    {{- end }}
   {{- end }}
   rules:
   {{- $ports := list }}
@@ -504,19 +523,25 @@ spec:
 {{- $root := .root }}
 
 {{/* Determine the port to monitor */}}
-{{- $monitorPort := dict }}
-{{- if $deploymentConfig.serviceMonitorPort }}
-  {{- $monitorPort = dict "name" $deploymentConfig.serviceMonitorPort }}
-{{- else }}
-  {{/* Find the first available port */}}
-  {{- range $containerName, $container := $deploymentConfig.containers }}
-    {{- range $portName, $port := $container.ports }}
-      {{- if not $monitorPort }}
-        {{- $monitorPort = dict "name" $portName }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-{{- end }}
+{{- $metricsPort := "" -}}
+{{/* First try to find http-metrics port */}}
+{{- range $containerName, $container := $deploymentConfig.containers -}}
+  {{- range $portName, $port := $container.ports -}}
+    {{- if eq $portName "http-metrics" -}}
+      {{- $metricsPort = $portName -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{/* If http-metrics not found, use first available port */}}
+{{- if not $metricsPort -}}
+  {{- range $containerName, $container := $deploymentConfig.containers -}}
+    {{- range $portName, $port := $container.ports -}}
+      {{- if not $metricsPort -}}
+        {{- $metricsPort = $portName -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
 
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
@@ -534,7 +559,7 @@ spec:
     matchLabels:
       {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $root) | nindent 6 }}
   endpoints:
-  - port: {{ $monitorPort.name }}
+  - port: {{ $metricsPort }}
     {{- if $deploymentConfig.serviceMonitor }}
     {{- with $deploymentConfig.serviceMonitor.interval }}
     interval: {{ . }}
@@ -556,3 +581,34 @@ spec:
     {{- toYaml $deploymentConfig.serviceMonitor.namespaceSelector | nindent 4 }}
   {{- end }}
 {{- end }}
+
+{{/* Helper для автоматического создания certificate */}}
+{{- define "ks-universal.autoCertificate" -}}
+{{- $deploymentName := .deploymentName }}
+{{- $deploymentConfig := .deploymentConfig }}
+{{- $root := .root }}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $root.Values.ingressesGeneral) | fromYaml }}
+
+{{- $domains := list }}
+{{- range $defaultedIngress.hosts }}
+{{- $domains = append $domains .host }}
+{{- end }}
+
+{{- $certificateConfig := dict }}
+{{- if $deploymentConfig.certificate }}
+{{- $certificateConfig = $deploymentConfig.certificate }}
+{{- end }}
+{{- $_ := set $certificateConfig "domains" $domains }}
+
+{{- include "ks-universal.certificate" (dict "certificateName" $deploymentName "certificateConfig" $certificateConfig "root" $root) }}
+{{- end }}
+
+{{- define "ks-universal.validateCertificate" -}}
+{{- $deploymentConfig := . -}}
+{{- if and $deploymentConfig.autoCreateCertificate (not $deploymentConfig.autoCreateIngress) -}}
+{{- fail (printf "autoCreateCertificate requires autoCreateIngress to be enabled") -}}
+{{- end -}}
+{{- if and $deploymentConfig.autoCreateCertificate (not $deploymentConfig.ingress) -}}
+{{- fail (printf "autoCreateCertificate requires ingress configuration") -}}
+{{- end -}}
+{{- end -}}
