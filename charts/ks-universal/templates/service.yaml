@@ -24,7 +24,7 @@ spec:
   selector:
     {{- include "ks-universal.componentLabels" (dict "name" $serviceName "root" $root) | nindent 4 }}
 {{- end }}
-
+{{- include "ks-universal.validate" . -}}
 {{/* Main service template */}}
 {{- if .Values.services }}
 {{- range $serviceName, $serviceConfig := .Values.services }}

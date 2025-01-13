@@ -1,0 +1,29 @@
+configs:
+  app-config:
+    type: configMap
+    data:
+      APP_ENV: production
+      CACHE_ENABLED: "true"
+      LOG_LEVEL: info
+  
+  app-secrets:
+    type: secret
+    data:
+      database-url: postgresql://user:pass@host:5432/db
+      api-key: c2VjcmV0
+  
+  nginx-conf:
+    type: configMap
+    data:
+      nginx.conf: |
+        events {
+          worker_connections  1024;
+        }
+        http {
+          server {
+            listen 80;
+            location / {
+              root /usr/share/nginx/html;
+            }
+          }
+        }

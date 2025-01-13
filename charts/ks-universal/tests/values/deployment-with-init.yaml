@@ -1,0 +1,20 @@
+deployments:
+  app-with-init:
+    containers:
+      init-db-check:
+        image: busybox
+        imageTag: 1.28
+        args:
+          - /bin/sh
+          - -c
+          - >
+            until nc -z -w 2 postgres-svc 5432;
+            do echo "waiting for database...";
+            sleep 2;
+            done
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080

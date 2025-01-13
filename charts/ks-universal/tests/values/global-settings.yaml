@@ -1,0 +1,70 @@
+generic:
+  extraImagePullSecrets:
+    - name: my-registry-secret
+
+deploymentsGeneral:
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 2000
+
+  nodeSelector:
+    kubernetes.io/os: linux
+    kubernetes.io/arch: amd64
+
+  tolerations:
+    - key: "node-role.kubernetes.io/control-plane"
+      operator: "Exists"
+      effect: "NoSchedule"
+
+  affinity:
+    nodeAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 1
+          preference:
+            matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                  - performance
+
+  probes:
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: http
+      initialDelaySeconds: 10
+      periodSeconds: 30
+      timeoutSeconds: 5
+      failureThreshold: 3
+    readinessProbe:
+      httpGet:
+        path: /ready
+        port: http
+      initialDelaySeconds: 5
+      periodSeconds: 10
+    startupProbe:
+      httpGet:
+        path: /health
+        port: http
+      failureThreshold: 30
+      periodSeconds: 10
+
+  lifecycle:
+    preStop:
+      exec:
+        command: ["/bin/sh", "-c", "sleep 10"]
+
+  autoCreateServiceMonitor: true
+  autoCreateSoftAntiAffinity: true
+
+# Добавляем минимальный deployment для тестирования
+deployments:
+  test-app:
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80

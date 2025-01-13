@@ -1,0 +1,11 @@
+deployments:
+  distributed-app:
+    replicas: 3
+    autoCreateSoftAntiAffinity: true
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80

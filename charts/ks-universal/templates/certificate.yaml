@@ -1,0 +1,29 @@
+{{- define "ks-universal.certificate" -}}
+{{- $certificateName := .certificateName }}
+{{- $certificateConfig := .certificateConfig }}
+{{- $root := .root }}
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: {{ $certificateName }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $certificateName) | nindent 4 }}
+spec:
+  secretName: {{ printf "%s-tls" $certificateName }}
+  issuerRef:
+    {{- if $certificateConfig.clusterIssuer }}
+    kind: ClusterIssuer
+    name: {{ $certificateConfig.clusterIssuer }}
+    {{- else if $certificateConfig.issuer }}
+    kind: Issuer
+    name: {{ $certificateConfig.issuer }}
+    {{- else }}
+    kind: ClusterIssuer
+    name: letsencrypt
+    {{- end }}
+  dnsNames:
+  {{- range $certificateConfig.domains }}
+    - {{ . }}
+  {{- end }}
+---
+{{- end }}

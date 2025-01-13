@@ -1,6 +1,0 @@
-# tests/serviceaccount/values/aws-sa.yaml
-deployments:
-  aws-app:
-    serviceAccount:
-      annotations:
-        eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/service-role"

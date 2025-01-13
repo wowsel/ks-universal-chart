@@ -1,0 +1,58 @@
+deployments:
+  complex-app:
+    replicas: 3
+    autoCreateServiceAccount: true
+    autoCreatePdb: true
+    autoCreateIngress: true
+    
+    serviceAccountConfig:
+      annotations:
+        eks.amazonaws.com/role-arn: arn:aws:iam::123456789012:role/my-role
+
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+      ingressClassName: nginx
+      hosts:
+        - host: my-app.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+              port: 8080
+      tls:
+        - hosts:
+            - my-app.example.com
+          secretName: my-app-tls
+
+    autoCreateServiceMonitor: true
+    serviceMonitorPort: http
+    serviceMonitor:
+      labels:
+        release: prometheus-operator
+      interval: 30s
+      scrapeTimeout: 10s
+      endpoints:
+        - port: metrics
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+          metrics:
+            containerPort: 9090
+        resources:
+          requests:
+            cpu: 500m
+            memory: 512Mi
+          limits:
+            cpu: 1000m
+            memory: 1Gi
+
+      sidecar:
+        image: sidecar
+        imageTag: v1.0.0
+        ports:
+          metrics:
+            containerPort: 9091

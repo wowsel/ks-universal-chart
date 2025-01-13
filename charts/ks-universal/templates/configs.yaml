@@ -1,3 +1,4 @@
+{{- include "ks-universal.validate" . -}}
 {{- range $name, $config := .Values.configs }}
 apiVersion: v1
 kind: {{ if eq $config.type "secret" }}Secret{{ else }}ConfigMap{{ end }}
