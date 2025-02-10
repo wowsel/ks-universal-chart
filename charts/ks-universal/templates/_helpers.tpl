@@ -63,43 +63,7 @@ Service labels
 {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $serviceName) | nindent 0 }}
 {{- end }}
 
-
-{{/*
-Validation for required fields
-*/}}
-{{- define "ks-universal.validateContainer" -}}
-{{- $container := .container -}}
-{{- $name := .name -}}
-{{- if not $container.image -}}
-{{- fail (printf "Container %s: image is required" $name) -}}
-{{- end -}}
-{{- if not $container.imageTag -}}
-{{- fail (printf "Container %s: imageTag is required" $name) -}}
-{{- end -}}
-{{/* Проверка полей valueFrom в env */}}
-{{- if $container.env -}}
-{{- range $container.env -}}
-{{- if and (not .value) (not .valueFrom) -}}
-{{- fail (printf "Container %s: either value or valueFrom must be specified for environment variable %s" $name .name) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{/* Проверка полей envFrom */}}
-{{- if $container.envFrom -}}
-{{- range $container.envFrom -}}
-{{- if not .type -}}
-{{- fail (printf "Container %s: envFrom type is required (configMap or secret)" $name) -}}
-{{- end -}}
-{{- if not .configName -}}
-{{- fail (printf "Container %s: envFrom configName is required" $name) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-
-{{/*
-Merge deployment values with general defaults
-*/}}
+{{/* Helper for deployment defaults */}}
 {{- define "ks-universal.deploymentDefaults" -}}
 {{- $deployment := .deployment }}
 {{- $general := .general }}
@@ -121,13 +85,6 @@ Merge deployment values with general defaults
     {{- range $containerName, $container := $result.containers }}
       {{- if not $container.probes }}
         {{- $_ := set $container "probes" $general.probes }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  {{- if $general.lifecycle }}
-    {{- range $containerName, $container := $result.containers }}
-      {{- if not $container.lifecycle }}
-        {{- $_ := set $container "lifecycle" $general.lifecycle }}
       {{- end }}
     {{- end }}
   {{- end }}
@@ -172,22 +129,6 @@ Merge deployment values with general defaults
   {{- end }}
 {{- end }}
 {{- toYaml $result }}
-{{- end }}
-
-{{- define "ks-universal.validatePorts" -}}
-{{- $ports := .ports }}
-{{- $containerName := .containerName }}
-{{- $portNames := dict }}
-{{- range $portName, $port := $ports }}
-  {{- if hasKey $portNames $portName }}
-    {{- fail (printf "Container %s: duplicate port name %s" $containerName $portName) }}
-  {{- end }}
-  {{- $_ := set $portNames $portName true }}
-  {{- $portValue := int $port.containerPort }}
-  {{- if not (and (gt $portValue 0) (le $portValue 65535)) }}
-    {{- fail (printf "Container %s: port %s must be between 1 and 65535" $containerName $portName) }}
-  {{- end }}
-{{- end }}
 {{- end }}
 
 {{- define "ks-universal.hasMetricsPort" -}}
@@ -309,104 +250,120 @@ podAntiAffinity:
 {{- end }}
 
 {{/* Helper for generating containers */}}
-{{- define "ks-universal.containers" }}
+{{- define "ks-universal.containers" -}}
 {{- $root := .root -}}
 {{- $containers := .containers -}}
 {{- range $containerName, $container := $containers }}
-- name: {{ $containerName }}
-  image: {{ include "ks-universal.tplValue" (dict "value" $container.image "context" $root) }}:{{ include "ks-universal.tplValue" (dict "value" $container.imageTag "context" $root) }}
-  {{- if $container.args }}
-  args:
-    {{- toYaml $container.args | nindent 4 }}
+- {{ include "ks-universal.container" (dict "containerName" $containerName "container" $container "root" $root) | nindent 2 | trim }}
+{{- end }}
+{{- end }}
+
+{{/* Helper for generating container */}}
+{{- define "ks-universal.container" -}}
+{{- $containerName := .containerName -}}
+{{- $container := .container -}}
+{{- $root := .root -}}
+name: {{ $containerName }}
+image: {{ include "ks-universal.tplValue" (dict "value" $container.image "context" $root) }}:{{ include "ks-universal.tplValue" (dict "value" $container.imageTag "context" $root) }}
+{{- if $container.args }}
+args:
+  {{- toYaml $container.args | nindent 2 }}
+{{- end }}
+{{- if $container.command }}
+command:
+  {{- toYaml $container.command | nindent 2 }}
+{{- end }}
+{{- if $container.ports }}
+ports:
+  {{- range $portName, $port := $container.ports }}
+  - name: {{ $portName }}
+    containerPort: {{ $port.containerPort }}
+    protocol: {{ $port.protocol | default "TCP" }}
   {{- end }}
-  {{- if $container.command }}
-  command:
-    {{- toYaml $container.command | nindent 4 }}
-  {{- end }}
-  {{- if $container.ports }}
-  {{- include "ks-universal.validatePorts" (dict "ports" $container.ports "containerName" $containerName) }}
-  ports:
-    {{- range $portName, $port := $container.ports }}
-    - name: {{ $portName }}
-      containerPort: {{ $port.containerPort }}
-      protocol: {{ $port.protocol | default "TCP" }}
+{{- end }}
+{{- if $container.volumeMounts }}
+volumeMounts:
+  {{- range $container.volumeMounts }}
+  - name: {{ .name }}
+    mountPath: {{ .mountPath }}
+    {{- if .subPath }}
+    subPath: {{ .subPath }}
+    {{- end }}
+    {{- if .readOnly }}
+    readOnly: {{ .readOnly }}
     {{- end }}
   {{- end }}
-  {{- if $container.volumeMounts }}
-  volumeMounts:
-    {{- range $container.volumeMounts }}
-    - name: {{ .name }}
-      mountPath: {{ .mountPath }}
-      {{- if .subPath }}
-      subPath: {{ .subPath }}
-      {{- end }}
-      {{- if .readOnly }}
-      readOnly: {{ .readOnly }}
-      {{- end }}
+{{- end -}}
+{{/* Process environment variables */}}
+{{- $envVars := list -}}
+{{/* Add regular env vars if they exist */}}
+{{- if $container.env -}}
+  {{- range $container.env -}}
+    {{- $envVars = append $envVars . -}}
+  {{- end -}}
+{{- end -}}
+{{/* Process secretRefs if they exist */}}
+{{- if and $container.secretRefs $root.Values.secretRefs -}}
+  {{- range $refName := $container.secretRefs -}}
+    {{- if hasKey $root.Values.secretRefs $refName -}}
+      {{- range $env := index $root.Values.secretRefs $refName -}}
+        {{- $envVars = append $envVars $env -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Output all environment variables */}}
+{{- if $envVars }}
+env:
+  {{- range $envVars }}
+  - name: {{ .name }}
+    {{- if .value }}
+    value: {{ .value | quote }}
+    {{- else if .valueFrom }}
+    valueFrom:
+      {{- toYaml .valueFrom | nindent 6 }}
+    {{- else if .secretKeyRef }}
+    valueFrom:
+      secretKeyRef:
+        name: {{ .secretKeyRef.name }}
+        key: {{ .secretKeyRef.key }}
     {{- end }}
   {{- end }}
-  {{- if or $container.env $container.envFrom }}
-  {{- if $container.envFrom }}
-  envFrom:
-    {{- range $container.envFrom }}
-    - {{ .type }}Ref:
-        name: {{ include "ks-universal.configName" (dict "root" $root "name" .configName) }}
-    {{- end }}
+{{- end }}
+
+{{- if $container.envFrom }}
+envFrom:
+  {{- range $container.envFrom }}
+  - {{ .type }}Ref:
+      name: {{ include "ks-universal.configName" (dict "root" $root "name" .configName) }}
   {{- end }}
-  {{- if $container.env }}
-  env:
-    {{- range $container.env }}
-    - name: {{ .name }}
-      {{- if .value }}
-      value: {{ .value | quote }}
-      {{- else if .valueFrom }}
-      valueFrom:
-        {{- if .valueFrom.configMapKeyRef }}
-        configMapKeyRef:
-          name: {{ include "ks-universal.configName" (dict "root" $root "name" .valueFrom.configMapKeyRef.name) }}
-          key: {{ .valueFrom.configMapKeyRef.key }}
-        {{- else if .valueFrom.secretKeyRef }}
-        secretKeyRef:
-          name: {{ include "ks-universal.configName" (dict "root" $root "name" .valueFrom.secretKeyRef.name) }}
-          key: {{ .valueFrom.secretKeyRef.key }}
-        {{- else if .valueFrom.fieldRef }}
-        fieldRef:
-          fieldPath: {{ .valueFrom.fieldRef.fieldPath }}
-        {{- else if .valueFrom.resourceFieldRef }}
-        resourceFieldRef:
-          containerName: {{ .valueFrom.resourceFieldRef.containerName }}
-          resource: {{ .valueFrom.resourceFieldRef.resource }}
-        {{- end }}
-      {{- end }}
-    {{- end }}
-  {{- end }}
-  {{- end }}
-  {{- with $container.resources }}
-  resources:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- if $container.securityContext }}
-  securityContext:
-    {{- toYaml $container.securityContext | nindent 4 }}
-  {{- end }}
-  {{- if $container.probes }}
-  {{- if $container.probes.livenessProbe }}
-  livenessProbe:
-    {{- toYaml $container.probes.livenessProbe | nindent 4 }}
-  {{- end }}
-  {{- if $container.probes.readinessProbe }}
-  readinessProbe:
-    {{- toYaml $container.probes.readinessProbe | nindent 4 }}
-  {{- end }}
-  {{- if $container.probes.startupProbe }}
-  startupProbe:
-    {{- toYaml $container.probes.startupProbe | nindent 4 }}
-  {{- end }}
-  {{- end }}
-  {{- with $container.lifecycle }}
-  lifecycle:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+{{- end }}
+{{- with $container.resources }}
+resources:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- if $container.securityContext }}
+securityContext:
+  {{- toYaml $container.securityContext | nindent 2 }}
+{{- end }}
+{{- if $container.probes }}
+{{- if $container.probes.livenessProbe }}
+livenessProbe:
+  {{- toYaml $container.probes.livenessProbe | nindent 2 }}
+{{- end }}
+{{- if $container.probes.readinessProbe }}
+readinessProbe:
+  {{- toYaml $container.probes.readinessProbe | nindent 2 }}
+{{- end }}
+{{- if $container.probes.startupProbe }}
+startupProbe:
+  {{- toYaml $container.probes.startupProbe | nindent 2 }}
+{{- end }}
+{{- end }}
+{{- with $container.lifecycle }}
+lifecycle:
+  {{- toYaml . | nindent 2 }}
 {{- end }}
 {{- end }}
 
@@ -603,12 +560,22 @@ spec:
 {{- include "ks-universal.certificate" (dict "certificateName" $deploymentName "certificateConfig" $certificateConfig "root" $root) }}
 {{- end }}
 
-{{- define "ks-universal.validateCertificate" -}}
-{{- $deploymentConfig := . -}}
-{{- if and $deploymentConfig.autoCreateCertificate (not $deploymentConfig.autoCreateIngress) -}}
-{{- fail (printf "autoCreateCertificate requires autoCreateIngress to be enabled") -}}
+{{/* Helper for processing secretRefs */}}
+{{- define "ks-universal.processSecretRefs" -}}
+{{- $container := .container -}}
+{{- $root := .root -}}
+{{- $result := list -}}
+
+{{- if and $container.secretRefs $root.Values.secretRefs -}}
+  {{- range $container.secretRefs -}}
+    {{- $refName := . -}}
+    {{- if hasKey $root.Values.secretRefs $refName -}}
+      {{- range $env := index $root.Values.secretRefs $refName -}}
+        {{- $result = append $result $env -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
-{{- if and $deploymentConfig.autoCreateCertificate (not $deploymentConfig.ingress) -}}
-{{- fail (printf "autoCreateCertificate requires ingress configuration") -}}
-{{- end -}}
+
+{{- toYaml $result -}}
 {{- end -}}

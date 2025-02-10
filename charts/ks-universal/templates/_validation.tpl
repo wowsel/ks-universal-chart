@@ -54,21 +54,81 @@ Context validation
 {{- end -}}
 
 {{/*
-Container validation
+Ports validation
 */}}
+{{- define "ks-universal.validatePorts" -}}
+{{- $ports := .ports }}
+{{- $containerName := .containerName }}
+{{- $context := .context }}
+{{- $portNames := dict }}
+{{- range $portName, $port := $ports }}
+  {{- if hasKey $portNames $portName }}
+    {{- fail (printf "%s - Container %s: duplicate port name %s" $context $containerName $portName) }}
+  {{- end }}
+  {{- $_ := set $portNames $portName true }}
+  {{- $portValue := int $port.containerPort }}
+  {{- if not (and (gt $portValue 0) (le $portValue 65535)) }}
+    {{- fail (printf "%s - Container %s: port %s must be between 1 and 65535" $context $containerName $portName) }}
+  {{- end }}
+{{- end }}
+{{- end }}
+
+{{/* SecretRefs validation */}}
+{{- define "ks-universal.validateSecretRefs" -}}
+{{- $secretRefs := .secretRefs -}}
+{{- $context := .context -}}
+
+{{- if not $secretRefs -}}
+{{- fail (printf "%s: secretRefs configuration must not be empty" $context) -}}
+{{- end -}}
+
+{{- range $refName, $refConfig := $secretRefs -}}
+{{- if not (kindIs "slice" $refConfig) -}}
+{{- fail (printf "%s: secretRef %s must be a list of environment variables" $context $refName) -}}
+{{- end -}}
+
+{{- range $refConfig -}}
+{{- if not .name -}}
+{{- fail (printf "%s: name is required for secretRef %s" $context $refName) -}}
+{{- end -}}
+{{- if not .secretKeyRef -}}
+{{- fail (printf "%s: secretKeyRef is required for secretRef %s env %s" $context $refName .name) -}}
+{{- end -}}
+{{- if not .secretKeyRef.name -}}
+{{- fail (printf "%s: secretKeyRef.name is required for secretRef %s env %s" $context $refName .name) -}}
+{{- end -}}
+{{- if not .secretKeyRef.key -}}
+{{- fail (printf "%s: secretKeyRef.key is required for secretRef %s env %s" $context $refName .name) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Container validation */}}
 {{- define "ks-universal.validateContainer" -}}
 {{- $containerName := .containerName -}}
 {{- $container := .container -}}
 {{- $context := .context -}}
+{{- $root := .root -}}
 
 {{- if not $container.image -}}
 {{- fail (printf "%s - Container %s: image is required" $context $containerName) -}}
 {{- end -}}
+
 {{- if not $container.imageTag -}}
 {{- fail (printf "%s - Container %s: imageTag is required" $context $containerName) -}}
 {{- end -}}
 
-{{/* Validate env */}}
+{{/* Validate secretRefs if defined */}}
+{{- if and $container.secretRefs $root.Values.secretRefs -}}
+{{- range $container.secretRefs -}}
+{{- if not (hasKey $root.Values.secretRefs .) -}}
+{{- fail (printf "%s - Container %s: referenced secretRef '%s' not found in .Values.secretRefs" $context $containerName .) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate env valueFrom */}}
 {{- if $container.env -}}
 {{- range $container.env -}}
 {{- if and (not .value) (not .valueFrom) -}}
@@ -77,16 +137,21 @@ Container validation
 {{- end -}}
 {{- end -}}
 
+{{/* Validate envFrom */}}
+{{- if $container.envFrom -}}
+{{- range $container.envFrom -}}
+{{- if not .type -}}
+{{- fail (printf "%s - Container %s: envFrom type is required (configMap or secret)" $context $containerName) -}}
+{{- end -}}
+{{- if not .configName -}}
+{{- fail (printf "%s - Container %s: envFrom configName is required" $context $containerName) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
 {{/* Validate ports */}}
 {{- if $container.ports -}}
-{{- range $portName, $port := $container.ports -}}
-{{- if not $port.containerPort -}}
-{{- fail (printf "%s - Container %s: containerPort is required for port %s" $context $containerName $portName) -}}
-{{- end -}}
-{{- if and $port.containerPort (or (lt $port.containerPort 1) (gt $port.containerPort 65535)) -}}
-{{- fail (printf "%s - Container %s: containerPort must be between 1 and 65535 for port %s" $context $containerName $portName) -}}
-{{- end -}}
-{{- end -}}
+{{- include "ks-universal.validatePorts" (dict "ports" $container.ports "containerName" $containerName "context" $context) }}
 {{- end -}}
 {{- end -}}
 
@@ -225,6 +290,19 @@ ServiceAccount validation
 {{- end -}}
 
 {{/*
+Certificate validation
+*/}}
+{{- define "ks-universal.validateCertificate" -}}
+{{- $deploymentConfig := . -}}
+{{- if and $deploymentConfig.autoCreateCertificate (not $deploymentConfig.autoCreateIngress) -}}
+{{- fail (printf "autoCreateCertificate requires autoCreateIngress to be enabled") -}}
+{{- end -}}
+{{- if and $deploymentConfig.autoCreateCertificate (not $deploymentConfig.ingress) -}}
+{{- fail (printf "autoCreateCertificate requires ingress configuration") -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Ingress validation
 */}}
 {{- define "ks-universal.validateIngress" -}}
@@ -335,6 +413,7 @@ Deployment validation
 {{- define "ks-universal.validateDeployment" -}}
 {{- $deploymentName := .deploymentName -}}
 {{- $deploymentConfig := .deploymentConfig -}}
+{{- $root := .root -}}
 
 {{- if not $deploymentConfig -}}
 {{- fail (printf "Deployment %s: configuration must not be empty" $deploymentName) -}}
@@ -345,7 +424,7 @@ Deployment validation
 {{- fail (printf "Deployment %s: containers configuration is required" $deploymentName) -}}
 {{- end -}}
 {{- range $containerName, $container := $deploymentConfig.containers -}}
-{{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "Deployment %s" $deploymentName)) -}}
+{{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "Deployment %s" $deploymentName) "root" $root) -}}
 {{- end -}}
 
 {{/* HPA validation */}}
@@ -370,15 +449,7 @@ Deployment validation
 
 {{/* Certificate and Ingress validation */}}
 {{- if $deploymentConfig.autoCreateCertificate -}}
-{{- if not $deploymentConfig.autoCreateIngress -}}
-{{- fail (printf "Deployment %s: autoCreateCertificate requires autoCreateIngress to be enabled" $deploymentName) -}}
-{{- end -}}
-{{- if not $deploymentConfig.ingress -}}
-{{- fail (printf "Deployment %s: ingress configuration is required when autoCreateCertificate is enabled" $deploymentName) -}}
-{{- end -}}
-{{- if not $deploymentConfig.ingress.hosts -}}
-{{- fail (printf "Deployment %s: ingress.hosts is required when autoCreateCertificate is enabled" $deploymentName) -}}
-{{- end -}}
+{{- include "ks-universal.validateCertificate" $deploymentConfig -}}
 {{- end -}}
 {{- end -}}
 
@@ -388,6 +459,7 @@ CronJob validation
 {{- define "ks-universal.validateCronJob" -}}
 {{- $cronJobName := .cronJobName -}}
 {{- $cronJobConfig := .cronJobConfig -}}
+{{- $root := .root -}}
 
 {{- if not $cronJobConfig -}}
 {{- fail (printf "CronJob %s: configuration must not be empty" $cronJobName) -}}
@@ -403,7 +475,7 @@ CronJob validation
 {{- fail (printf "CronJob %s: containers configuration is required" $cronJobName) -}}
 {{- end -}}
 {{- range $containerName, $container := $cronJobConfig.containers -}}
-{{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "CronJob %s" $cronJobName)) -}}
+{{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "CronJob %s" $cronJobName) "root" $root) -}}
 {{- end -}}
 {{- end -}}
 
@@ -413,6 +485,7 @@ Job validation
 {{- define "ks-universal.validateJob" -}}
 {{- $jobName := .jobName -}}
 {{- $jobConfig := .jobConfig -}}
+{{- $root := .root -}}
 
 {{- if not $jobConfig -}}
 {{- fail (printf "Job %s: configuration must not be empty" $jobName) -}}
@@ -423,7 +496,7 @@ Job validation
 {{- fail (printf "Job %s: containers configuration is required" $jobName) -}}
 {{- end -}}
 {{- range $containerName, $container := $jobConfig.containers -}}
-{{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "Job %s" $jobName)) -}}
+{{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "Job %s" $jobName) "root" $root) -}}
 {{- end -}}
 {{- end -}}
 
@@ -433,27 +506,32 @@ Main validation entrypoint
 {{- define "ks-universal.validate" -}}
 {{- $root := . -}}
 
+{{/* Validate global secretRefs if defined */}}
+{{- if .Values.secretRefs -}}
+{{- include "ks-universal.validateSecretRefs" (dict "secretRefs" .Values.secretRefs "context" "Global") -}}
+{{- end -}}
+
 {{/* Context validation */}}
 {{- include "ks-universal.validateContext" $root -}}
 
 {{/* Deployments validation */}}
 {{- if $root.Values.deployments -}}
 {{- range $deploymentName, $deploymentConfig := $root.Values.deployments -}}
-{{- include "ks-universal.validateDeployment" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig) -}}
+{{- include "ks-universal.validateDeployment" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $root) -}}
 {{- end -}}
 {{- end -}}
 
 {{/* CronJobs validation */}}
 {{- if $root.Values.cronJobs -}}
 {{- range $cronJobName, $cronJobConfig := $root.Values.cronJobs -}}
-{{- include "ks-universal.validateCronJob" (dict "cronJobName" $cronJobName "cronJobConfig" $cronJobConfig) -}}
+{{- include "ks-universal.validateCronJob" (dict "cronJobName" $cronJobName "cronJobConfig" $cronJobConfig "root" $root) -}}
 {{- end -}}
 {{- end -}}
 
 {{/* Jobs validation */}}
 {{- if $root.Values.jobs -}}
 {{- range $jobName, $jobConfig := $root.Values.jobs -}}
-{{- include "ks-universal.validateJob" (dict "jobName" $jobName "jobConfig" $jobConfig) -}}
+{{- include "ks-universal.validateJob" (dict "jobName" $jobName "jobConfig" $jobConfig "root" $root) -}}
 {{- end -}}
 {{- end -}}
 

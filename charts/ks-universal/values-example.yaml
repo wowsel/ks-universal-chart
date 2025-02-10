@@ -41,6 +41,26 @@ configs:
       API_KEY: "your-api-key"
       DB_PASSWORD: "your-db-password"
 
+secretRefs:
+  shared-secrets:
+    - name: S3_SECRET
+      secretKeyRef:
+        name: passwords
+        key: s3-secret-key
+    - name: OPENSEARCH_PASSWORD
+      secretKeyRef:
+        name: passwords
+        key: opensearch-password
+  db-secrets:
+    - name: DB_PASSWORD
+      secretKeyRef:
+        name: database-creds
+        key: password
+    - name: DB_USER
+      secretKeyRef:
+        name: database-creds
+        key: username
+
 # Main application deployment
 deployments:
   backend-api:
@@ -82,6 +102,9 @@ deployments:
         envFrom:
           - type: configMap
             configName: app-config
+        secretRefs:
+          - shared-secrets
+          - db-secrets
         volumeMounts:
           - name: config-volume
             mountPath: /config

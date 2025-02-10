@@ -82,7 +82,7 @@ spec:
       {{- $newContainer := merge $container (dict "args" $deploymentConfig.migrations.args) }}
       {{- $_ := set $containersWithArgs $containerName $newContainer }}
       {{- end }}
-      {{- include "ks-universal.containers" (dict "root" $ "containers" $containersWithArgs) | nindent 8 | trimPrefix "\n" }}
+      {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 6 }}
       {{- if $defaultedConfig.volumes }}
       volumes:
         {{- toYaml $defaultedConfig.volumes | nindent 8 }}
