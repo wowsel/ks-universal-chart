@@ -236,7 +236,16 @@ configs:
       DB_PASSWORD: "your-db-password"
       API_KEY: "your-api-key"
       REDIS_PASSWORD: "redis-password"
-
+secretRefs:
+  db-secrets:
+    - name: DB_PASSWORD_SHARED
+      secretKeyRef:
+        name: database-creds
+        key: password
+    - name: DB_USER_SHARED
+      secretKeyRef:
+        name: database-creds
+        key: username
 # Redis service for caching
 deployments:
   redis:
@@ -302,6 +311,8 @@ deployments:
               secretKeyRef:
                 name: app-secrets
                 key: REDIS_PASSWORD
+        secretRefs:
+          - db-secrets        
         resources:
           requests:
             cpu: 100m
@@ -521,6 +532,127 @@ containers:
       - type: secret
         configName: app-secrets
 ```
+</details>
+
+### Secret References
+
+<details>
+<summary>Secret References Configuration</summary>
+
+First, define your secret reference groups in the `secretRefs` section:
+
+```yaml
+secretRefs:
+  shared-secrets:  # Group name for common secrets
+    - name: S3_SECRET  # Environment variable name
+      secretKeyRef:
+        name: passwords  # Secret resource name
+        key: s3-secret-key  # Key in the secret
+    - name: OPENSEARCH_PASSWORD
+      secretKeyRef:
+        name: passwords
+        key: opensearch-password
+  
+  db-secrets:  # Another group for database credentials
+    - name: DB_PASSWORD
+      secretKeyRef:
+        name: database-creds
+        key: password
+    - name: DB_USER
+      secretKeyRef:
+        name: database-creds
+        key: username
+```
+
+Then reference these groups in your container configuration:
+
+```yaml
+deployments:
+  backend-api:
+    containers:
+      main:
+        secretRefs:
+          - shared-secrets  # Reference the secret group
+          - db-secrets     # Can use multiple groups
+```
+
+This will automatically expand to individual environment variables in the deployment:
+
+```yaml
+containers:
+  - name: main
+    env:
+      - name: S3_SECRET
+        valueFrom:
+          secretKeyRef:
+            name: passwords
+            key: s3-secret-key
+      - name: OPENSEARCH_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: passwords
+            key: opensearch-password
+      - name: DB_PASSWORD
+        valueFrom:
+          secretKeyRef:
+            name: database-creds
+            key: password
+      - name: DB_USER
+        valueFrom:
+          secretKeyRef:
+            name: database-creds
+            key: username
+```
+
+#### Benefits
+
+- **DRY (Don't Repeat Yourself)**: Define secret references once and reuse them across multiple deployments
+- **Maintainability**: Update secret references in one place
+- **Grouping**: Organize secrets logically by their purpose or application component
+- **Flexibility**: Mix and match secret groups as needed for each container
+
+#### Usage Tips
+
+1. Group secrets logically (e.g., database credentials, API keys, shared secrets)
+2. Use descriptive group names that indicate the purpose of the secrets
+3. You can combine `secretRefs` with regular `env` entries in your container configuration
+4. Multiple containers can reference the same secret groups
+
+#### Example with Multiple Features
+
+```yaml
+secretRefs:
+  shared-secrets:
+    - name: S3_SECRET
+      secretKeyRef:
+        name: passwords
+        key: s3-secret-key
+    - name: API_KEY
+      secretKeyRef:
+        name: passwords
+        key: api-key
+
+deployments:
+  backend-api:
+    containers:
+      main:
+        image: backend-api
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+        secretRefs:
+          - shared-secrets
+        env:
+          - name: ADDITIONAL_VAR
+            value: "custom-value"
+          - name: CUSTOM_SECRET
+            valueFrom:
+              secretKeyRef:
+                name: custom-secrets
+                key: special-key
+```
+
 </details>
 
 ### Volume Mounts

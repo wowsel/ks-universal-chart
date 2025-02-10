@@ -5,3 +5,4 @@ services: {}
 ingresses: {}
 jobs: {}
 generic: {}
+secretRefs: {}
