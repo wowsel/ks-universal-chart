@@ -291,3 +291,68 @@ tests:
         equal:
           path: spec.concurrencyPolicy
           value: Forbid
+  - it: should properly handle secretRefs configuration
+    values:
+      - ./values/secretrefs-config.yaml
+    asserts:
+      - template: deployment.yaml
+        equal:
+          path: kind
+          value: Deployment
+      - template: deployment.yaml
+        equal:
+          path: metadata.name
+          value: app-with-secrets
+      
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[0].name
+          value: APP_ENV
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[0].value
+          value: production
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[1].name
+          value: API_KEY
+
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[2].name
+          value: S3_SECRET
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.name
+          value: passwords
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[2].valueFrom.secretKeyRef.key
+          value: s3-secret-key
+
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[3].name
+          value: OPENSEARCH_PASSWORD
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[3].valueFrom.secretKeyRef.name
+          value: passwords
+      
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[4].name
+          value: DB_PASSWORD
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[4].valueFrom.secretKeyRef.name
+          value: database-creds
+      
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[5].name
+          value: DB_USER
+      - template: deployment.yaml
+        equal:
+          path: spec.template.spec.containers[0].env[5].valueFrom.secretKeyRef.name
+          value: database-creds
