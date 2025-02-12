@@ -229,3 +229,24 @@ ingresses:
           - path: /
             pathType: Prefix
             port: 80
+  ingresses:
+    epg:
+      hosts:
+        - host: myhost.com
+          paths:
+            - path: /handler/health
+              pathType: Exact
+              service: handler
+              portName: http
+        - subdomain: main
+          paths:
+            - path: /main/health
+              pathType: Exact
+              service: main
+              portName: http
+        - host:
+          paths:
+            - path: /main2/health
+              pathType: Exact
+              service: main2
+              portName: http

@@ -1,37 +1,49 @@
 {{- if .Values.ingresses }}
 {{- range $ingressName, $ingressConfig := .Values.ingresses }}
+{{/* Apply defaults using the same helper as autoCreateIngress */}}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" $ingressConfig "general" $.Values.generic.ingressesGeneral) | fromYaml }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ $ingressName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $ingressName) | nindent 4 }}
-  {{- with $ingressConfig.annotations }}
+  {{- with $defaultedIngress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- if $ingressConfig.ingressClassName }}
-  ingressClassName: {{ $ingressConfig.ingressClassName }}
+  {{- if $defaultedIngress.ingressClassName }}
+  ingressClassName: {{ $defaultedIngress.ingressClassName }}
   {{- end }}
-  {{- with $ingressConfig.tls }}
+  {{- with $defaultedIngress.tls }}
   tls:
     {{- toYaml . | nindent 4 }}
   {{- end }}
   rules:
-  {{- range $ingressConfig.hosts }}
-    - host: {{ .host }}
+  {{- $globalDomain := "" }}
+  {{- if and $.Values.generic $.Values.generic.ingressesGeneral }}
+    {{- $globalDomain = $.Values.generic.ingressesGeneral.domain | default "" | trim }}
+  {{- end }}
+  {{- range $defaultedIngress.hosts }}
+    - host: {{ include "ks-universal.computedIngressHost" (dict "host" .host "subdomain" .subdomain "globalDomain" $globalDomain) | trim }}
       http:
         paths:
         {{- range .paths }}
           - path: {{ .path }}
-            pathType: {{ .pathType }}
+            pathType: {{ .pathType | default "Prefix" }}
             backend:
               service:
+                {{- if .service }}
+                name: {{ .service }}
+                {{- else }}
                 name: {{ $ingressName }}
+                {{- end }}
                 port:
                   {{- if .port }}
                   number: {{ .port }}
+                  {{- else if .portName }}
+                  name: {{ .portName }}
                   {{- else }}
                   name: http
                   {{- end }}
