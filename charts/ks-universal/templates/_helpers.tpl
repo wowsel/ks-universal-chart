@@ -494,7 +494,7 @@ spec:
   {{- end }}
 {{- end }}
 
-{{/* Updated ServiceMonitor template */}}
+{{/* Updated ServiceMonitor template with global settings */}}
 {{- define "ks-universal.serviceMonitor" -}}
 {{- $deploymentName := .deploymentName }}
 {{- $deploymentConfig := .deploymentConfig }}
@@ -521,16 +521,31 @@ spec:
   {{- end -}}
 {{- end -}}
 
+{{/* Get general settings */}}
+{{- $generalSettings := dict }}
+{{- if and $root.Values.generic $root.Values.generic.serviceMonitorGeneral }}
+  {{- $generalSettings = $root.Values.generic.serviceMonitorGeneral }}
+{{- end }}
+
+{{/* Merge labels from general and local configs */}}
+{{- $labels := dict }}
+{{/* First add general labels if they exist */}}
+{{- if $generalSettings.labels }}
+  {{- $labels = merge $labels $generalSettings.labels }}
+{{- end }}
+{{/* Then add local labels if they exist (they will override general ones) */}}
+{{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.labels }}
+  {{- $labels = merge $labels $deploymentConfig.serviceMonitor.labels }}
+{{- end }}
+
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
-    {{- if $deploymentConfig.serviceMonitor }}
-    {{- with $deploymentConfig.serviceMonitor.labels }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
+    {{- if $labels }}
+    {{- toYaml $labels | nindent 4 }}
     {{- end }}
 spec:
   selector:
@@ -543,11 +558,17 @@ spec:
     {{- if .path }}
     path: {{ .path }}
     {{- end }}
+    {{- /* Use local interval if set, otherwise use general interval if available */}}
     {{- if .interval }}
     interval: {{ .interval }}
+    {{- else if $generalSettings.interval }}
+    interval: {{ $generalSettings.interval }}
     {{- end }}
+    {{- /* Use local scrapeTimeout if set, otherwise use general scrapeTimeout if available */}}
     {{- if .scrapeTimeout }}
     scrapeTimeout: {{ .scrapeTimeout }}
+    {{- else if $generalSettings.scrapeTimeout }}
+    scrapeTimeout: {{ $generalSettings.scrapeTimeout }}
     {{- end }}
     {{- if .relabelings }}
     relabelings:
@@ -577,11 +598,17 @@ spec:
     {{- with $deploymentConfig.serviceMonitor.path }}
     path: {{ . }}
     {{- end }}
-    {{- with $deploymentConfig.serviceMonitor.interval }}
-    interval: {{ . }}
+    {{- /* For simple configuration, use local interval if set, otherwise use general interval */}}
+    {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.interval }}
+    interval: {{ $deploymentConfig.serviceMonitor.interval }}
+    {{- else if $generalSettings.interval }}
+    interval: {{ $generalSettings.interval }}
     {{- end }}
-    {{- with $deploymentConfig.serviceMonitor.scrapeTimeout }}
-    scrapeTimeout: {{ . }}
+    {{- /* For simple configuration, use local scrapeTimeout if set, otherwise use general scrapeTimeout */}}
+    {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.scrapeTimeout }}
+    scrapeTimeout: {{ $deploymentConfig.serviceMonitor.scrapeTimeout }}
+    {{- else if $generalSettings.scrapeTimeout }}
+    scrapeTimeout: {{ $generalSettings.scrapeTimeout }}
     {{- end }}
     {{- with $deploymentConfig.serviceMonitor.relabelings }}
     relabelings:

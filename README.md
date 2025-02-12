@@ -1100,6 +1100,7 @@ generic:
     labels:
       prometheus: kube-prometheus
     interval: 30s
+    scrapeTimeout: 15s
 ```
 </details>
 

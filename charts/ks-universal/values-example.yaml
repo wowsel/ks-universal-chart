@@ -25,6 +25,11 @@ generic:
     annotations:
       nginx.ingress.kubernetes.io/enable-cors: "true"
     domain: example.com
+  serviceMonitorGeneral:
+    labels:
+      prometheus: kube-prometheus
+    interval: 30s
+    scrapeTimeout: 10s
   extraImagePullSecrets:
     - name: registry-secret
 
@@ -136,7 +141,7 @@ deployments:
     serviceMonitor:
       endpoints:
         - port: http-metrics
-          interval: 15s
+          scrapeTimeout: 20s
   
   frontend:
     replicas: 2
