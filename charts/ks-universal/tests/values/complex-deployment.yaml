@@ -31,8 +31,7 @@ deployments:
         release: prometheus-operator
       interval: 30s
       scrapeTimeout: 10s
-      endpoints:
-        - port: metrics
+      path: /metrics
     containers:
       main:
         image: my-app

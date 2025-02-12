@@ -537,8 +537,46 @@ spec:
     matchLabels:
       {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $root) | nindent 6 }}
   endpoints:
+  {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.endpoints }}
+  {{- range $deploymentConfig.serviceMonitor.endpoints }}
+  - port: {{ .port | default $metricsPort }}
+    {{- if .path }}
+    path: {{ .path }}
+    {{- end }}
+    {{- if .interval }}
+    interval: {{ .interval }}
+    {{- end }}
+    {{- if .scrapeTimeout }}
+    scrapeTimeout: {{ .scrapeTimeout }}
+    {{- end }}
+    {{- if .relabelings }}
+    relabelings:
+      {{- toYaml .relabelings | nindent 6 }}
+    {{- end }}
+    {{- if .metricRelabelings }}
+    metricRelabelings:
+      {{- toYaml .metricRelabelings | nindent 6 }}
+    {{- end }}
+    {{- if .honorLabels }}
+    honorLabels: {{ .honorLabels }}
+    {{- end }}
+    {{- if .honorTimestamps }}
+    honorTimestamps: {{ .honorTimestamps }}
+    {{- end }}
+    {{- if .scheme }}
+    scheme: {{ .scheme }}
+    {{- end }}
+    {{- if .tlsConfig }}
+    tlsConfig:
+      {{- toYaml .tlsConfig | nindent 6 }}
+    {{- end }}
+  {{- end }}
+  {{- else }}
   - port: {{ $metricsPort }}
     {{- if $deploymentConfig.serviceMonitor }}
+    {{- with $deploymentConfig.serviceMonitor.path }}
+    path: {{ . }}
+    {{- end }}
     {{- with $deploymentConfig.serviceMonitor.interval }}
     interval: {{ . }}
     {{- end }}
@@ -554,6 +592,7 @@ spec:
       {{- toYaml . | nindent 6 }}
     {{- end }}
     {{- end }}
+  {{- end }}
   {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.namespaceSelector }}
   namespaceSelector:
     {{- toYaml $deploymentConfig.serviceMonitor.namespaceSelector | nindent 4 }}

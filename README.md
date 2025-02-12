@@ -861,7 +861,11 @@ deployments:
 
 <details>
 <summary>Monitoring Configuration</summary>
+The serviceMonitor section is optional, if not specified the following logic will be used:
+- First, a port named "http-metrics" is searched among all containers
+- If no such port is found, the first available port from the first container is taken
 
+The default Prometheus interval and timeout will be used, /metrics as the path.
 ```yaml
 deployments:
   my-app:
@@ -875,6 +879,13 @@ deployments:
       endpoints:
         - port: http-metrics
           interval: 15s
+```
+OR if you only have one endpoint
+```yaml
+serviceMonitor:
+  path: /metrics
+  interval: 30s
+  scrapeTimeout: 10s
 ```
 </details>
 
