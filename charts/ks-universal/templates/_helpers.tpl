@@ -110,10 +110,11 @@ Service labels
 {{- end }}
 
 {{- define "ks-universal.ingressDefaults" -}}
-{{- $ingress := .ingress }}
-{{- $general := .general }}
-{{- $result := deepCopy $ingress }}
-{{- if $general }}
+  {{- $ingress := .ingress | default dict }}
+  {{- $general := .general | default dict }}
+  {{- $result := deepCopy $ingress }}
+
+  {{- /* Наследование общих аннотаций, ingressClassName и tls */ -}}
   {{- if $general.annotations }}
     {{- $result = merge $result (dict "annotations" (merge (default dict $ingress.annotations) $general.annotations)) }}
   {{- end }}
@@ -127,8 +128,25 @@ Service labels
       {{- $result = merge $result (dict "tls" $general.tls) }}
     {{- end }}
   {{- end }}
-{{- end }}
-{{- toYaml $result }}
+
+  {{- /* Новый функционал: обработка глобального домена и subdomain */ -}}
+  {{- $globalDomain := $general.domain | default "" }}
+  {{- if and $globalDomain (hasKey $result "hosts") }}
+    {{- $newHosts := list }}
+    {{- range $index, $hostEntry := $result.hosts }}
+      {{- $newHost := $hostEntry }}
+      {{- if not (hasKey $hostEntry "host") }}
+        {{- if hasKey $hostEntry "subdomain" }}
+          {{- /* Формируем host как subdomain + "." + globalDomain */ -}}
+          {{- $newHost = merge $hostEntry (dict "host" (printf "%s.%s" $hostEntry.subdomain $globalDomain)) }}
+        {{- end }}
+      {{- end }}
+      {{- $newHosts = append $newHosts $newHost }}
+    {{- end }}
+    {{- $_ := set $result "hosts" $newHosts }}
+  {{- end }}
+
+  {{- toYaml $result }}
 {{- end }}
 
 {{- define "ks-universal.hasMetricsPort" -}}
@@ -369,80 +387,83 @@ lifecycle:
 
 {{/* Helper для автоматического создания ingress */}}
 {{- define "ks-universal.autoIngress" -}}
-{{- $deploymentName := .deploymentName }}
-{{- $deploymentConfig := .deploymentConfig }}
-{{- $root := .root }}
-{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $root.Values.ingressesGeneral) | fromYaml }}
-
+{{- /* Подготовка переменных */ -}}
+{{- $deploymentName := .deploymentName -}}
+{{- $deploymentConfig := .deploymentConfig -}}
+{{- $root := .root -}}
+{{- $generic := $root.Values.generic | default dict -}}
+{{- $ingressesGeneral := $generic.ingressesGeneral | default dict -}}
+{{- $globalDomain := $ingressesGeneral.domain | default "" | trim -}}
+{{- /* Применяем наследование для ingress */ -}}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $root.Values.generic.ingressesGeneral) | fromYaml -}}
+{{- /* Собираем список портов из контейнеров */ -}}
+{{- $ports := list -}}
+{{- range $containerName, $container := $deploymentConfig.containers -}}
+  {{- range $portName, $port := $container.ports -}}
+    {{- $ports = append $ports (dict "name" $portName "port" $port.containerPort) -}}
+  {{- end -}}
+{{- end -}}
+{{- $firstPort := first $ports -}}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: {{ $deploymentName }}
   labels:
-    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
+{{ include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 | trimPrefix "\n"}}
   annotations:
-    {{- with $defaultedIngress.annotations }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- if $deploymentConfig.autoCreateCertificate }}
-    {{- if and $deploymentConfig.certificate $deploymentConfig.certificate.clusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ $deploymentConfig.certificate.clusterIssuer }}
-    {{- else if and $deploymentConfig.certificate $deploymentConfig.certificate.issuer }}
-    cert-manager.io/issuer: {{ $deploymentConfig.certificate.issuer }}
-    {{- else }}
-    cert-manager.io/cluster-issuer: letsencrypt
-    {{- end }}
-    {{- end }}
+{{- with $defaultedIngress.annotations }}
+{{ toYaml . | nindent 4 | trimPrefix "\n"}}
+{{- end }}
+{{- if $deploymentConfig.autoCreateCertificate }}
+{{- if and $deploymentConfig.certificate $deploymentConfig.certificate.clusterIssuer }}
+    cert-manager.io/cluster-issuer: {{ $deploymentConfig.certificate.clusterIssuer | quote }}
+{{- else if and $deploymentConfig.certificate $deploymentConfig.certificate.issuer }}
+    cert-manager.io/issuer: {{ $deploymentConfig.certificate.issuer | quote }}
+{{- else }}
+    cert-manager.io/cluster-issuer: "letsencrypt"
+{{- end }}
+{{- end }}
 spec:
-  {{- if $defaultedIngress.ingressClassName }}
+{{- if $defaultedIngress.ingressClassName }}
   ingressClassName: {{ $defaultedIngress.ingressClassName }}
-  {{- end }}
-  {{- if or $defaultedIngress.tls $deploymentConfig.autoCreateCertificate }}
+{{- end }}
+{{- if or $defaultedIngress.tls $deploymentConfig.autoCreateCertificate }}
   tls:
-    {{- if $deploymentConfig.autoCreateCertificate }}
+{{- if $deploymentConfig.autoCreateCertificate }}
     - secretName: {{ printf "%s-tls" $deploymentName }}
       hosts:
-      {{- range $defaultedIngress.hosts }}
-        - {{ .host }}
-      {{- end }}
-    {{- else }}
-    {{- with $defaultedIngress.tls }}
-    {{- toYaml . | nindent 4 }}
-    {{- end }}
-    {{- end }}
-  {{- end }}
+{{- range $hostEntry := $defaultedIngress.hosts }}
+        - {{ include "ks-universal.computedIngressHost" (dict "host" $hostEntry.host "subdomain" $hostEntry.subdomain "globalDomain" $globalDomain) | trim }}
+{{- end }}
+{{- else }}
+{{ toYaml $defaultedIngress.tls | nindent 2 }}
+{{- end }}
+{{- end }}
   rules:
-  {{- $ports := list }}
-  {{- range $containerName, $container := $deploymentConfig.containers }}
-    {{- range $portName, $port := $container.ports }}
-      {{- $ports = append $ports (dict "name" $portName "port" $port.containerPort) }}
-    {{- end }}
-  {{- end }}
-  {{- $firstPort := first $ports }}
-  {{- range $defaultedIngress.hosts }}
-    - host: {{ .host }}
+{{- range $hostEntry := $defaultedIngress.hosts }}
+    - host: {{ include "ks-universal.computedIngressHost" (dict "host" $hostEntry.host "subdomain" $hostEntry.subdomain "globalDomain" $globalDomain) | trim }}
       http:
         paths:
-        {{- range .paths }}
-          - path: {{ .path }}
-            pathType: {{ .pathType | default "Prefix" }}
+{{- range $path := $hostEntry.paths }}
+          - path: {{ $path.path }}
+            pathType: {{ $path.pathType | default "Prefix" }}
             backend:
               service:
                 name: {{ $deploymentName }}
                 port:
-                  {{- if .port }}
-                  number: {{ .port }}
-                  {{- else if .portName }}
-                  name: {{ .portName }}
-                  {{- else if $firstPort }}
-                  {{- if $firstPort.name }}
+{{- if $path.port }}
+                  number: {{ $path.port }}
+{{- else if $path.portName }}
+                  name: {{ $path.portName }}
+{{- else if $firstPort }}
+{{- if $firstPort.name }}
                   name: {{ $firstPort.name }}
-                  {{- else }}
+{{- else }}
                   number: {{ $firstPort.port }}
-                  {{- end }}
-                  {{- end }}
-        {{- end }}
-  {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
 {{- end }}
 
 {{/* Helper для автоматического создания PDB */}}
@@ -541,24 +562,29 @@ spec:
 
 {{/* Helper для автоматического создания certificate */}}
 {{- define "ks-universal.autoCertificate" -}}
-{{- $deploymentName := .deploymentName }}
-{{- $deploymentConfig := .deploymentConfig }}
-{{- $root := .root }}
-{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $root.Values.ingressesGeneral) | fromYaml }}
+{{- $deploymentName := .deploymentName -}}
+{{- $deploymentConfig := .deploymentConfig -}}
+{{- $root := .root -}}
+{{- $generic := $root.Values.generic | default dict -}}
+{{- $ingressesGeneral := $generic.ingressesGeneral | default dict -}}
+{{- $globalDomain := $ingressesGeneral.domain | default "" | trim -}}
+{{- /* Применяем наследование для ingress */ -}}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $root.Values.generic.ingressesGeneral) | fromYaml -}}
+{{- /* Собираем список доменов с использованием computedIngressHost */ -}}
+{{- $domains := list -}}
+{{- range $hostEntry := $defaultedIngress.hosts -}}
+  {{- $computed := include "ks-universal.computedIngressHost" (dict "host" $hostEntry.host "subdomain" $hostEntry.subdomain "globalDomain" $globalDomain) | trim -}}
+  {{- $domains = append $domains $computed -}}
+{{- end -}}
+{{- $certificateConfig := dict -}}
+{{- if $deploymentConfig.certificate -}}
+  {{- $certificateConfig = $deploymentConfig.certificate -}}
+{{- end -}}
+{{- $_ := set $certificateConfig "domains" $domains -}}
 
-{{- $domains := list }}
-{{- range $defaultedIngress.hosts }}
-{{- $domains = append $domains .host }}
+{{ include "ks-universal.certificate" (dict "certificateName" $deploymentName "certificateConfig" $certificateConfig "root" $root) -}}
 {{- end }}
 
-{{- $certificateConfig := dict }}
-{{- if $deploymentConfig.certificate }}
-{{- $certificateConfig = $deploymentConfig.certificate }}
-{{- end }}
-{{- $_ := set $certificateConfig "domains" $domains }}
-
-{{- include "ks-universal.certificate" (dict "certificateName" $deploymentName "certificateConfig" $certificateConfig "root" $root) }}
-{{- end }}
 
 {{/* Helper for processing secretRefs */}}
 {{- define "ks-universal.processSecretRefs" -}}

@@ -303,40 +303,73 @@ Certificate validation
 {{- end -}}
 
 {{/*
+Computed Ingress Host
+*/}}
+{{- define "ks-universal.computedIngressHost" -}}
+  {{- $host := .host | default "" | trim -}}
+  {{- $subdomain := .subdomain | default "" | trim -}}
+  {{- $globalDomain := .globalDomain | default "" | trim -}}
+  {{- $domainRegex := "^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)(?:\\.(?:[a-zA-Z]{2,}))+$" -}}
+  {{- $subdomainRegex := "^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$" -}}
+
+  {{- if $host }}
+    {{- if regexMatch $domainRegex $host }}
+      {{ $host }}
+    {{- else }}
+      {{ fail (printf "Invalid host value: '%s'. Он должен соответствовать шаблону домена." $host) }}
+    {{- end }}
+  {{- else if $subdomain }}
+    {{- if not $globalDomain }}
+      {{ fail "Global domain должен быть указан, когда используется subdomain." }}
+    {{- end }}
+    {{- if regexMatch $subdomainRegex $subdomain }}
+      {{ printf "%s.%s" $subdomain $globalDomain }}
+    {{- else }}
+      {{ fail (printf "Invalid subdomain value: '%s'. Допустимы только строчные буквы, цифры и дефисы." $subdomain) }}
+    {{- end }}
+  {{- else if $globalDomain }}
+    {{- if regexMatch $domainRegex $globalDomain }}
+      {{ $globalDomain }}
+    {{- else }}
+      {{ fail (printf "Invalid global domain value: '%s'" $globalDomain) }}
+    {{- end }}
+  {{- else }}
+    {{ fail "Не указаны ни host, ни subdomain, ни global domain." }}
+  {{- end }}
+{{- end }}
+
+
+
+{{/*
 Ingress validation
 */}}
 {{- define "ks-universal.validateIngress" -}}
-{{- $name := .name -}}
-{{- $config := .config -}}
+  {{- $root := .root -}}
+  {{- $name := .name -}}
+  {{- $config := .config -}}
+  {{- $generic := $root.Values.generic | default dict -}}
+  {{- $ingressesGeneral := $generic.ingressesGeneral | default dict -}}
+  {{- $globalDomain := $ingressesGeneral.domain | default "" | trim }}
+  
+  {{- if not $config -}}
+    {{ fail (printf "Ingress %s: configuration must not be empty" $name) }}
+  {{- end }}
 
-{{- if not $config -}}
-{{- fail (printf "Ingress %s: configuration must not be empty" $name) -}}
-{{- end -}}
+  {{- if not $config.hosts -}}
+    {{ fail (printf "Ingress %s: hosts configuration is required" $name) }}
+  {{- end }}
 
-{{- if not $config.hosts -}}
-{{- fail (printf "Ingress %s: hosts configuration is required" $name) -}}
-{{- end -}}
+  {{- range $hostEntry := $config.hosts }}
+    {{- /* Вычисляем итоговый хост с помощью нашей функции */ -}}
+    {{- $computedHost := include "ks-universal.computedIngressHost" (dict "host" $hostEntry.host "subdomain" $hostEntry.subdomain "globalDomain" $globalDomain) | trim }}
+    {{- if not $computedHost }}
+      {{ fail (printf "Ingress %s: computed host is empty for entry %+v" $name $hostEntry) }}
+    {{- end }}
+    {{/* Здесь можно добавить дополнительные проверки, если необходимо */}}
+  {{- end }}
+{{- end }}
 
-{{- range $host := $config.hosts -}}
-{{- if not $host.host -}}
-{{- fail (printf "Ingress %s: host field is required in hosts configuration" $name) -}}
-{{- end -}}
-{{- if not $host.paths -}}
-{{- fail (printf "Ingress %s: paths configuration is required for host %s" $name $host.host) -}}
-{{- end -}}
-{{- range $path := $host.paths -}}
-{{- if not $path.path -}}
-{{- fail (printf "Ingress %s: path field is required in paths configuration for host %s" $name $host.host) -}}
-{{- end -}}
-{{- if not $path.pathType -}}
-{{- fail (printf "Ingress %s: pathType field is required in paths configuration for host %s" $name $host.host) -}}
-{{- end -}}
-{{- if not (or (eq $path.pathType "Exact") (eq $path.pathType "Prefix") (eq $path.pathType "ImplementationSpecific")) -}}
-{{- fail (printf "Ingress %s: invalid pathType '%s'. Must be one of: Exact, Prefix, ImplementationSpecific" $name $path.pathType) -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
-{{- end -}}
+
 
 {{/*
 Config validation
@@ -559,7 +592,7 @@ Main validation entrypoint
 {{/* Standalone Ingresses validation */}}
 {{- if $root.Values.ingresses -}}
 {{- range $ingressName, $ingressConfig := $root.Values.ingresses -}}
-{{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig) -}}
+{{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig "root" $) }}
 {{- end -}}
 {{- end -}}
 {{- end -}}

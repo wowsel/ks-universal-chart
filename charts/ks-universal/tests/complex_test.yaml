@@ -356,3 +356,57 @@ tests:
         equal:
           path: spec.template.spec.containers[0].env[5].valueFrom.secretKeyRef.name
           value: database-creds
+  - it: should handle all three ingress cases - host specified, empty host and subdomain
+    values:
+      - ./values/ingress-all-cases.yaml
+    asserts:
+      # # Тест для деплоймента с пустым host (Ingress появляется как документ index: 4)
+      # - template: deployment.yaml
+      #   documentIndex: 4
+      #   equal:
+      #     path: spec.rules[0].host
+      #     value: override.example.com
+      # - template: deployment.yaml
+      #   documentIndex: 4
+      #   equal:
+      #     path: spec.ingressClassName
+      #     value: custom-class
+      # - template: deployment.yaml
+      #   documentIndex: 4
+      #   equal:
+      #     path: metadata.annotations["custom.ingress.annotation"]
+      #     value: "custom-value"
+
+      # Тест для деплоймента с явным host (Ingress – document index: 3)
+      - template: deployment.yaml
+        documentIndex: 3
+        equal:
+          path: spec.rules[0].host
+          value: override.example.com
+      - template: deployment.yaml
+        documentIndex: 3
+        equal:
+          path: spec.ingressClassName
+          value: custom-class
+      - template: deployment.yaml
+        documentIndex: 3
+        equal:
+          path: metadata.annotations["custom.ingress.annotation"]
+          value: "custom-value"
+
+      # Тест для деплоймента с subdomain (Ingress – document index: 5)
+      - template: deployment.yaml
+        documentIndex: 5
+        equal:
+          path: spec.rules[0].host
+          value: sub.globaldomain.com
+      - template: deployment.yaml
+        documentIndex: 5
+        equal:
+          path: spec.ingressClassName
+          value: custom-class
+      - template: deployment.yaml
+        documentIndex: 5
+        equal:
+          path: metadata.annotations["custom.ingress.annotation"]
+          value: "custom-value"
