@@ -1081,6 +1081,7 @@ generic:
   ingressesGeneral:
     annotations:
       nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    domain: example.com
     ingressClassName: nginx
 
   # Service monitor defaults
@@ -1105,6 +1106,41 @@ deployments:
     ingress:
       hosts:
         - host: myapp.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+```
+Or use a subdomain in cases where a global domain has been provided.
+```yaml
+generic:
+  ingressesGeneral:
+    domain: example.com
+    ingressClassName: alb
+
+deployments:
+  myapp:
+    autoCreateIngress: true
+    ingress:
+      hosts:
+        - subdomain: api  # Will be api.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+
+deployments:
+  myapp2:
+    autoCreateIngress: true
+    ingress:
+      hosts:
+        - host: custom.domain.com  # An explicitly specified host takes precedence.
+          paths:
+            - path: /
+              pathType: Prefix
+        - host: ""  # Will use global domain.
+          paths:
+            - path: /
+              pathType: Prefix
+        - subdomain: api  # Will be api.example.com
           paths:
             - path: /
               pathType: Prefix

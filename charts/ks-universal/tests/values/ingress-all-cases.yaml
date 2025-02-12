@@ -1,0 +1,57 @@
+generic:
+  ingressesGeneral:
+    domain: globaldomain.com
+    annotations:
+      custom.ingress.annotation: "custom-value"
+
+deployments:
+  test-host-override:
+    autoCreateIngress: true
+    ingress:
+      ingressClassName: custom-class
+      hosts:
+        - host: override.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
+
+  test-host-empty:
+    autoCreateIngress: true
+    ingress:
+      ingressClassName: custom-class
+      hosts:
+        - host: ""
+          paths:
+            - path: /
+              pathType: Prefix
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
+
+  test-subdomain:
+    autoCreateIngress: true
+    ingress:
+      ingressClassName: custom-class
+      hosts:
+        - subdomain: sub
+          paths:
+            - path: /
+              pathType: Prefix
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80

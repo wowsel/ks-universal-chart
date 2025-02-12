@@ -21,6 +21,10 @@ deploymentsGeneral:
 
 # Generic configurations
 generic:
+  ingressesGeneral:
+    annotations:
+      nginx.ingress.kubernetes.io/enable-cors: "true"
+    domain: example.com
   extraImagePullSecrets:
     - name: registry-secret
 
@@ -115,7 +119,7 @@ deployments:
           name: app-config
     ingress:
       hosts:
-        - host: api.example.com
+        - subdomain: api
           paths:
             - path: /
               pathType: Prefix
