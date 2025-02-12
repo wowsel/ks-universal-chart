@@ -237,13 +237,13 @@ ServiceMonitor validation
 {{- fail (printf "ServiceMonitor %s: configuration must not be empty" $name) -}}
 {{- end -}}
 
-{{- if not $config.endpoints -}}
-{{- fail (printf "ServiceMonitor %s: endpoints configuration is required" $name) -}}
-{{- end -}}
-
+{{/* Validate endpoints configuration */}}
+{{- if $config.endpoints -}}
 {{- range $endpoint := $config.endpoints -}}
 {{- if not $endpoint.port -}}
-{{- fail (printf "ServiceMonitor %s: port is required for endpoints" $name) -}}
+{{- if not (kindIs "string" $endpoint.port) -}}
+{{- fail (printf "ServiceMonitor %s: port must be a string" $name) -}}
+{{- end -}}
 {{- end -}}
 
 {{- if $endpoint.interval -}}
@@ -256,6 +256,39 @@ ServiceMonitor validation
 {{- if not (regexMatch "^([0-9]+(ms|s|m|h))+$" $endpoint.scrapeTimeout) -}}
 {{- fail (printf "ServiceMonitor %s: invalid scrapeTimeout format. Must be a valid duration (e.g., 30s, 1m, 1h)" $name) -}}
 {{- end -}}
+{{- end -}}
+
+{{- if $endpoint.path -}}
+{{- if not (kindIs "string" $endpoint.path) -}}
+{{- fail (printf "ServiceMonitor %s: path must be a string" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{- if $endpoint.scheme -}}
+{{- if not (or (eq $endpoint.scheme "http") (eq $endpoint.scheme "https")) -}}
+{{- fail (printf "ServiceMonitor %s: scheme must be either 'http' or 'https'" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{- if $endpoint.tlsConfig -}}
+{{- if not (kindIs "map" $endpoint.tlsConfig) -}}
+{{- fail (printf "ServiceMonitor %s: tlsConfig must be a map" $name) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate namespaceSelector if present */}}
+{{- if $config.namespaceSelector -}}
+{{- if not (kindIs "map" $config.namespaceSelector) -}}
+{{- fail (printf "ServiceMonitor %s: namespaceSelector must be a map" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate labels if present */}}
+{{- if $config.labels -}}
+{{- if not (kindIs "map" $config.labels) -}}
+{{- fail (printf "ServiceMonitor %s: labels must be a map" $name) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
