@@ -149,7 +149,6 @@ Service labels
   {{- toYaml $result }}
 {{- end }}
 
-
 {{- define "ks-universal.hasMetricsPort" -}}
 {{- $containers := .containers }}
 {{- $hasMetricsPort := false }}
