@@ -183,6 +183,7 @@ deployments:
         ports:
           http:
             containerPort: 8080
+            servicePort: 80    #Optional. Will use containerPort if not specified.
 ```
 </details>
 
