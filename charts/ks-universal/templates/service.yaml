@@ -39,7 +39,12 @@ spec:
 {{- $ports := list }}
 {{- range $containerName, $container := $deploymentConfig.containers }}
 {{- range $portName, $port := $container.ports }}
-{{- $ports = append $ports (dict "name" $portName "port" $port.containerPort "targetPort" $port.containerPort "protocol" (default "TCP" $port.protocol)) }}
+{{/* Get service port from servicePort if set, otherwise use containerPort */}}
+{{- $servicePort := $port.containerPort }}
+{{- if $port.servicePort }}
+  {{- $servicePort = $port.servicePort }}
+{{- end }}
+{{- $ports = append $ports (dict "name" $portName "port" $servicePort "targetPort" $port.containerPort "protocol" (default "TCP" $port.protocol)) }}
 {{- end }}
 {{- end }}
 {{- if $ports }}
