@@ -1,5 +1,4 @@
 # 🚀 Universal Kubernetes Helm Chart
-# Still in development! For testing use only! Do not use in production or anywhere else!
 This Helm chart provides a flexible and feature-rich way to deploy various Kubernetes resources with extensive customization options.
 
 ## Table of Contents
