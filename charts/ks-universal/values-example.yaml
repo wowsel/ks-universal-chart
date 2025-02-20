@@ -1,5 +1,10 @@
 # Global configurations for all deployments
 deploymentsGeneral:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 30%
+      maxUnavailable: 20%
   securityContext:
     runAsNonRoot: true
     runAsUser: 1000
@@ -73,6 +78,8 @@ secretRefs:
 # Main application deployment
 deployments:
   backend-api:
+    strategy:
+      type: Recreate
     replicas: 3
     autoCreateService: true
     autoCreateIngress: true

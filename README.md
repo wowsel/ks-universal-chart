@@ -18,6 +18,12 @@ This Helm chart provides a flexible and feature-rich way to deploy various Kuber
 ```yaml
 # Global deployment settings
 deploymentsGeneral:
+  # Default deployment update strategy
+  strategy:
+    type: RollingUpdate # RollingUpdate or Recreate
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
   securityContext: {}      # Pod security context
   nodeSelector: {}         # Node selection constraints
   tolerations: []         # Pod tolerations
@@ -37,6 +43,11 @@ generic:
 deployments:
   deployment-name:
     replicas: 1           # Number of pod replicas
+    strategy:             # Deployment update strategy
+      type: RollingUpdate  # RollingUpdate or Recreate
+      rollingUpdate:       # Optional for RollingUpdate type
+        maxSurge: 25%      # Maximum number of pods that can be created above desired number
+        maxUnavailable: 25% # Maximum number of pods that can be unavailable during update
     containers:           # Container configurations
       container-name:
         image: nginx      # Container image
@@ -910,6 +921,73 @@ deployments:
 ```
 </details>
 
+### Update Strategy
+
+<details>
+<summary>Update Strategy Configuration</summary>
+
+The chart supports two types of deployment update strategies: RollingUpdate and Recreate.
+
+```yaml
+deployments:
+  my-app:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+```
+
+**RollingUpdate Strategy (default):**
+- Updates pods gradually, maintaining application availability
+- `maxSurge`: Maximum number of pods that can be created above desired number
+- `maxUnavailable`: Maximum number of pods that can be unavailable during update
+- Both parameters are optional and default to 25%
+
+```yaml
+deployments:
+  my-app:
+    strategy:
+      type: RollingUpdate  # Minimal configuration
+```
+
+**Recreate Strategy:**
+- Terminates all existing pods before creating new ones
+- Useful when you can't have multiple versions running simultaneously
+
+```yaml
+deployments:
+  my-app:
+    strategy:
+      type: Recreate
+```
+
+**Global Default Configuration:**
+You can set a default strategy for all deployments:
+
+```yaml
+deploymentsGeneral:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 30%
+      maxUnavailable: 20%
+
+deployments:
+  my-app1:
+    # Will inherit strategy from deploymentsGeneral
+    containers:
+      ...
+  
+  my-app2:
+    # Override the default strategy
+    strategy:
+      type: Recreate
+    containers:
+      ...
+```
+</details>
+
 ### 🎯 Affinity Configuration
 
 The chart provides flexible ways to configure pod affinity rules, including automatic soft anti-affinity and custom node affinity settings.
@@ -1158,7 +1236,30 @@ deployments:
               pathType: Prefix
 ```
 </details>
+<details>
+<summary>How do I configure how my application updates are rolled out?</summary>
 
+Use the strategy configuration in your deployment:
+```yaml
+deployments:
+  my-app:
+    strategy:
+      type: RollingUpdate    # or Recreate
+      rollingUpdate:         # Optional for RollingUpdate
+        maxSurge: 25%       # Optional
+        maxUnavailable: 25% # Optional
+```
+
+Or set a default strategy for all deployments:
+```yaml
+deploymentsGeneral:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 30%
+      maxUnavailable: 20%
+```
+</details>
 <details>
 <summary>How do I configure database migrations?</summary>
 
