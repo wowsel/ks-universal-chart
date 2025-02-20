@@ -513,6 +513,11 @@ Deployment validation
 {{- include "ks-universal.validateServiceAccount" (dict "name" $deploymentName "config" $deploymentConfig.serviceAccount) -}}
 {{- end -}}
 
+{{/* Strategy validation */}}
+{{- if $deploymentConfig.strategy -}}
+{{- include "ks-universal.validateStrategy" (dict "name" $deploymentName "strategy" $deploymentConfig.strategy) -}}
+{{- end -}}
+
 {{/* Certificate and Ingress validation */}}
 {{- if $deploymentConfig.autoCreateCertificate -}}
 {{- include "ks-universal.validateCertificate" $deploymentConfig -}}
@@ -563,6 +568,40 @@ Job validation
 {{- end -}}
 {{- range $containerName, $container := $jobConfig.containers -}}
 {{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "Job %s" $jobName) "root" $root) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Update Strategy validation */}}
+{{- define "ks-universal.validateStrategy" -}}
+{{- $name := .name -}}
+{{- $strategy := .strategy -}}
+
+{{- if not $strategy -}}
+  {{- fail (printf "%s: strategy configuration must not be empty" $name) -}}
+{{- end -}}
+
+{{- if not $strategy.type -}}
+  {{- fail (printf "%s: strategy.type is required" $name) -}}
+{{- end -}}
+
+{{- if not (or (eq $strategy.type "Recreate") (eq $strategy.type "RollingUpdate")) -}}
+  {{- fail (printf "%s: strategy.type must be either 'Recreate' or 'RollingUpdate'" $name) -}}
+{{- end -}}
+
+{{/* Check format of maxSurge/maxUnavailable if they are specified, but don't require them */}}
+{{- if and (eq $strategy.type "RollingUpdate") $strategy.rollingUpdate -}}
+  {{- with $strategy.rollingUpdate -}}
+    {{- if .maxSurge -}}
+      {{- if not (or (kindIs "string" .maxSurge) (kindIs "int" .maxSurge)) -}}
+        {{- fail (printf "%s: strategy.rollingUpdate.maxSurge must be either a number or percentage string" $name) -}}
+      {{- end -}}
+    {{- end -}}
+    {{- if .maxUnavailable -}}
+      {{- if not (or (kindIs "string" .maxUnavailable) (kindIs "int" .maxUnavailable)) -}}
+        {{- fail (printf "%s: strategy.rollingUpdate.maxUnavailable must be either a number or percentage string" $name) -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
 {{- end -}}
 {{- end -}}
 
@@ -622,9 +661,16 @@ Main validation entrypoint
 {{- end -}}
 {{- end -}}
 
-{{/* Standalone Ingresses validation */}}
-{{- if $root.Values.ingresses -}}
+{{/* Standalone Ingresses validation - only if ingresses is defined */}}
+{{- if and $root.Values.ingresses (not (kindIs "map" $root.Values.ingresses.ingresses)) -}}
 {{- range $ingressName, $ingressConfig := $root.Values.ingresses -}}
+{{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig "root" $) }}
+{{- end -}}
+{{- end -}}
+
+{{/* Nested Ingresses validation - only if ingresses.ingresses is defined */}}
+{{- if and $root.Values.ingresses (kindIs "map" $root.Values.ingresses.ingresses) -}}
+{{- range $ingressName, $ingressConfig := $root.Values.ingresses.ingresses -}}
 {{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig "root" $) }}
 {{- end -}}
 {{- end -}}

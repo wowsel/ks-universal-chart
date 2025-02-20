@@ -356,6 +356,84 @@ tests:
         equal:
           path: spec.template.spec.containers[0].env[5].valueFrom.secretKeyRef.name
           value: database-creds
+  - it: should properly handle update strategy configurations
+    values:
+      - ./values/update-strategy.yaml
+    asserts:
+      # Проверяем наследование глобальной стратегии
+      - template: deployment.yaml
+        documentIndex: 1
+        equal:
+          path: metadata.name
+          value: inherit-strategy-app
+      - template: deployment.yaml
+        documentIndex: 1
+        equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+      - template: deployment.yaml
+        documentIndex: 1
+        equal:
+          path: spec.strategy.rollingUpdate.maxSurge
+          value: 30%
+      - template: deployment.yaml
+        documentIndex: 1
+        equal:
+          path: spec.strategy.rollingUpdate.maxUnavailable
+          value: 20%
+      # Проверяем Recreate стратегию
+      - template: deployment.yaml
+        documentIndex: 3
+        equal:
+          path: metadata.name
+          value: recreate-app
+      - template: deployment.yaml
+        documentIndex: 3
+        equal:
+          path: spec.strategy.type
+          value: Recreate
+      - template: deployment.yaml
+        documentIndex: 3
+        notExists:
+          path: spec.strategy.rollingUpdate
+
+      # Проверяем кастомную RollingUpdate стратегию
+      - template: deployment.yaml
+        documentIndex: 0
+        equal:
+          path: metadata.name
+          value: custom-rolling-app
+      - template: deployment.yaml
+        documentIndex: 0
+        equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+      - template: deployment.yaml
+        documentIndex: 0
+        equal:
+          path: spec.strategy.rollingUpdate.maxSurge
+          value: 50%
+      - template: deployment.yaml
+        documentIndex: 0
+        equal:
+          path: spec.strategy.rollingUpdate.maxUnavailable
+          value: 0
+      # Проверяем минимальную RollingUpdate конфигурацию
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: metadata.name
+          value: minimal-rolling-app
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.strategy.type
+          value: RollingUpdate
+      - template: deployment.yaml
+        documentIndex: 2
+        notExists:
+          path: spec.strategy.rollingUpdate
+
   - it: should handle all three ingress cases - host specified, empty host and subdomain
     values:
       - ./values/ingress-all-cases.yaml

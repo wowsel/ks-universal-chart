@@ -88,6 +88,11 @@ Service labels
       {{- end }}
     {{- end }}
   {{- end }}
+  {{- if $general.strategy }}
+    {{- if not $result.strategy }}
+      {{- $result = merge $result (dict "strategy" $general.strategy) }}
+    {{- end }}
+  {{- end }}
 {{- end }}
 {{- toYaml $result }}
 {{- end }}

@@ -1,0 +1,58 @@
+#Path: tests/values/update-strategy.yaml
+# Тест наследования глобальной стратегии
+deploymentsGeneral:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 30%
+      maxUnavailable: 20%
+
+deployments:
+  # Приложение, наследующее глобальную стратегию
+  inherit-strategy-app:
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
+
+  # Приложение с Recreate стратегией
+  recreate-app:
+    strategy:
+      type: Recreate
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
+
+  # Приложение с кастомной RollingUpdate стратегией
+  custom-rolling-app:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 50%
+        maxUnavailable: 0
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
+
+  # Приложение только с type RollingUpdate (проверка дефолтных значений)
+  minimal-rolling-app:
+    strategy:
+      type: RollingUpdate
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80

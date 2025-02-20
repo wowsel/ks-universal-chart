@@ -16,6 +16,10 @@ spec:
   {{- if and (not $deploymentConfig.hpa) $defaultedConfig.replicas }}
   replicas: {{ $defaultedConfig.replicas }}
   {{- end }}
+  {{- if $defaultedConfig.strategy }}
+  strategy:
+    {{- toYaml $defaultedConfig.strategy | nindent 4 }}
+  {{- end }}
   selector:
     matchLabels:
       {{- include "ks-universal.componentLabels" (dict "name" $deploymentName "root" $) | nindent 6 }}
