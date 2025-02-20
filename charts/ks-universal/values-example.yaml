@@ -1,70 +1,92 @@
-# Global configurations for all deployments
+# Global deployment settings that will be inherited by all deployments unless overridden
 deploymentsGeneral:
+  # Deployment update strategy configuration
   strategy:
-    type: RollingUpdate
-    rollingUpdate:
-      maxSurge: 30%
-      maxUnavailable: 20%
+    type: RollingUpdate    # Strategy type: RollingUpdate or Recreate
+    rollingUpdate:         # Configuration for RollingUpdate strategy
+      maxSurge: 30%        # Maximum number of pods that can be created above desired number
+      maxUnavailable: 20%  # Maximum number of pods that can be unavailable during the update
+
+  # Pod security context settings
   securityContext:
-    runAsNonRoot: true
-    runAsUser: 1000
+    runAsNonRoot: true    # Force the container to run as non-root user
+    runAsUser: 1000       # Specify the user ID to run the container
+
+  # Node selection criteria for pod scheduling
   nodeSelector:
-    kubernetes.io/os: linux
+    kubernetes.io/os: linux  # Schedule pods only on Linux nodes
+
+  # Default health check probe configurations for all containers
   probes:
+    # Liveness probe - determines if the container is running properly
     livenessProbe:
       httpGet:
-        path: /health
-        port: http
-      initialDelaySeconds: 30
-      periodSeconds: 10
+        path: /health     # HTTP endpoint to check container health
+        port: http        # Port name defined in container ports
+      initialDelaySeconds: 30  # Time to wait before first probe
+      periodSeconds: 10        # How often to perform the probe
+
+    # Readiness probe - determines if the container is ready to serve traffic
     readinessProbe:
       httpGet:
-        path: /ready
-        port: http
-      initialDelaySeconds: 5
-      periodSeconds: 10
+        path: /ready      # HTTP endpoint to check container readiness
+        port: http        # Port name defined in container ports
+      initialDelaySeconds: 5   # Time to wait before first probe
+      periodSeconds: 10        # How often to perform the probe
 
-# Generic configurations
+# Generic configurations applied across all resource types
 generic:
+  # Global ingress configurations
   ingressesGeneral:
     annotations:
-      nginx.ingress.kubernetes.io/enable-cors: "true"
-    domain: example.com
+      nginx.ingress.kubernetes.io/enable-cors: "true"  # Enable CORS for all ingresses
+    domain: example.com   # Default domain for all ingresses
+
+  # Global ServiceMonitor configurations for Prometheus monitoring
   serviceMonitorGeneral:
     labels:
-      prometheus: kube-prometheus
-    interval: 30s
-    scrapeTimeout: 10s
-  extraImagePullSecrets:
-    - name: registry-secret
+      prometheus: kube-prometheus  # Labels for ServiceMonitor discovery
+    interval: 30s        # How often to scrape metrics
+    scrapeTimeout: 10s   # Maximum time for each scrape operation
 
-# Configurations and Secrets
+  # Additional image pull secrets for private registries
+  extraImagePullSecrets:
+    - name: registry-secret  # Name of the Kubernetes secret containing registry credentials
+
+# Configuration and Secret management
 configs:
+  # Application configuration as ConfigMap
   app-config:
-    type: configMap
+    type: configMap     # Type can be 'configMap' or 'secret'
     data:
-      config.yaml: |
+      config.yaml: |    # Configuration file content
         environment: production
         log_level: info
         features:
           feature1: true
           feature2: false
-  app-secrets:
-    type: secret
-    data:
-      API_KEY: "your-api-key"
-      DB_PASSWORD: "your-db-password"
 
+  # Application secrets
+  app-secrets:
+    type: secret       # Creates a Kubernetes Secret
+    data:
+      API_KEY: "your-api-key"           # Will be base64 encoded automatically
+      DB_PASSWORD: "your-db-password"    # Will be base64 encoded automatically
+
+# Secret reference groups for reuse across deployments
 secretRefs:
+  # Shared secrets group
   shared-secrets:
-    - name: S3_SECRET
+    - name: S3_SECRET    # Environment variable name
       secretKeyRef:
-        name: passwords
-        key: s3-secret-key
+        name: passwords  # Kubernetes Secret name
+        key: s3-secret-key  # Key in the Secret
     - name: OPENSEARCH_PASSWORD
       secretKeyRef:
         name: passwords
         key: opensearch-password
+
+  # Database-specific secrets
   db-secrets:
     - name: DB_PASSWORD
       secretKeyRef:
@@ -74,39 +96,46 @@ secretRefs:
       secretKeyRef:
         name: database-creds
         key: username
-
-# Main application deployment
+        
+# Main application deployments
 deployments:
+  # Backend API service configuration
   backend-api:
     strategy:
-      type: Recreate
-    replicas: 3
-    autoCreateService: true
-    autoCreateIngress: true
-    autoCreateCertificate: true
-    autoCreateServiceMonitor: true
-    autoCreatePdb: true
+      type: Recreate    # Use Recreate strategy instead of default RollingUpdate
+    
+    replicas: 3         # Number of pod replicas to maintain
+    
+    # Enable automatic resource creation
+    autoCreateService: true           # Create a Service automatically
+    autoCreateIngress: true          # Create an Ingress automatically
+    autoCreateCertificate: true      # Create a Certificate automatically
+    autoCreateServiceMonitor: true   # Create a ServiceMonitor for Prometheus
+    autoCreatePdb: true             # Create a PodDisruptionBudget
+    
+    # PDB (Pod Disruption Budget) configuration
     pdbConfig:
-      minAvailable: 2
+      minAvailable: 2   # Minimum number of pods that must be available
+
+    # SSL/TLS certificate configuration
     certificate:
-      clusterIssuer: letsencrypt-prod
+      clusterIssuer: letsencrypt-prod  # cert-manager cluster issuer
+
+    # Container specifications
     containers:
       main:
-        image: backend-api
-        imageTag: v1.0.0
-        resources:
-          requests:
-            cpu: 100m
-            memory: 256Mi
-          limits:
-            cpu: 500m
-            memory: 512Mi
+        image: backend-api          # Container image name
+        imageTag: v1.0.0           # Container image tag
+        
+        # Port definitions
         ports:
           http:
-            containerPort: 8080
-            protocol: TCP
+            containerPort: 8080    # Main application port
+            protocol: TCP         # Protocol (TCP/UDP)
           http-metrics:
-            containerPort: 9090
+            containerPort: 9090   # Prometheus metrics port
+
+        # Environment variables
         env:
           - name: CONFIG_PATH
             value: /config/config.yaml
@@ -115,71 +144,62 @@ deployments:
               secretKeyRef:
                 name: app-secrets
                 key: API_KEY
+
+        # Load environment variables from ConfigMaps/Secrets
         envFrom:
           - type: configMap
             configName: app-config
+
+        # Reference predefined secret groups
         secretRefs:
-          - shared-secrets
-          - db-secrets
+          - shared-secrets  # Use secrets from shared-secrets group
+          - db-secrets     # Use secrets from db-secrets group
+
+        # Mount volumes into container
         volumeMounts:
           - name: config-volume
             mountPath: /config
             readOnly: true
+
+        # Resource limits and requests
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+
+    # Pod volumes configuration
     volumes:
       - name: config-volume
         configMap:
           name: app-config
+
+    # Ingress configuration
     ingress:
       hosts:
-        - subdomain: api
-          paths:
-            - path: /
-              pathType: Prefix
-    hpa:
-      minReplicas: 3
-      maxReplicas: 10
-      metrics:
-        - type: Resource
-          resource:
-            name: cpu
-            target:
-              type: Utilization
-              averageUtilization: 80
-    serviceMonitor:
-      endpoints:
-        - port: http-metrics
-          scrapeTimeout: 20s
-  
-  frontend:
-    replicas: 2
-    autoCreateService: true
-    autoCreateIngress: true
-    autoCreateCertificate: true
-    containers:
-      main:
-        image: frontend
-        imageTag: v1.0.0
-        resources:
-          requests:
-            cpu: 50m
-            memory: 128Mi
-          limits:
-            cpu: 200m
-            memory: 256Mi
-        ports:
-          http:
-            containerPort: 80
-    ingress:
-      hosts:
-        - host: app.example.com
+        - subdomain: api    # Will result in api.example.com
           paths:
             - path: /
               pathType: Prefix
 
-# Scheduled jobs
+    # Horizontal Pod Autoscaling configuration
+    hpa:
+      minReplicas: 3        # Minimum number of replicas
+      maxReplicas: 10       # Maximum number of replicas
+      metrics:
+        - type: Resource    # Type of metric to scale on
+          resource:
+            name: cpu      # Scale based on CPU usage
+            target:
+              type: Utilization
+              averageUtilization: 80  # Target CPU utilization
+
+# Scheduled jobs (CronJobs)
 cronJobs:
   backup:
-    schedule: "0 0 * * *"
+    schedule: "0 0 * * *"    # Run daily at midnight (cron format)
     containers:
       main:
         image: backup-job
@@ -192,7 +212,7 @@ cronJobs:
           - name: BACKUP_PATH
             value: /backup
 
-# One-time jobs
+# One-time jobs (Jobs)
 jobs:
   db-migration:
     containers:
@@ -213,19 +233,19 @@ jobs:
 # Standalone services
 services:
   external-service:
-    type: ClusterIP
+    type: ClusterIP           # Service type (ClusterIP, NodePort, LoadBalancer)
     ports:
       - name: http
-        port: 80
-        targetPort: 8080
+        port: 80             # Port exposed by the service
+        targetPort: 8080     # Port to forward to in the pod
 
 # Persistent Volume Claims
 persistentVolumeClaims:
   data-storage:
     accessModes:
-      - ReadWriteOnce
-    storageClassName: standard
-    size: 10Gi
+      - ReadWriteOnce        # Access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)
+    storageClassName: standard  # Storage class to use
+    size: 10Gi              # Size of the volume
 
 # Standalone ingresses
 ingresses:
@@ -245,13 +265,13 @@ ingresses:
               pathType: Exact
               service: handler
               portName: http
-        - subdomain: main
+        - subdomain: main  # Will be main.example.com if domain is set in generic.ingressesGeneral
           paths:
             - path: /main/health
               pathType: Exact
               service: main
               portName: http
-        - host:
+        - host: ""  # Will use domain from generic.ingressesGeneral
           paths:
             - path: /main2/health
               pathType: Exact

@@ -661,9 +661,16 @@ Main validation entrypoint
 {{- end -}}
 {{- end -}}
 
-{{/* Standalone Ingresses validation */}}
-{{- if $root.Values.ingresses -}}
+{{/* Standalone Ingresses validation - only if ingresses is defined */}}
+{{- if and $root.Values.ingresses (not (kindIs "map" $root.Values.ingresses.ingresses)) -}}
 {{- range $ingressName, $ingressConfig := $root.Values.ingresses -}}
+{{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig "root" $) }}
+{{- end -}}
+{{- end -}}
+
+{{/* Nested Ingresses validation - only if ingresses.ingresses is defined */}}
+{{- if and $root.Values.ingresses (kindIs "map" $root.Values.ingresses.ingresses) -}}
+{{- range $ingressName, $ingressConfig := $root.Values.ingresses.ingresses -}}
 {{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig "root" $) }}
 {{- end -}}
 {{- end -}}
