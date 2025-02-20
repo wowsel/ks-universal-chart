@@ -249,31 +249,23 @@ persistentVolumeClaims:
 
 # Standalone ingresses
 ingresses:
-  external:
+  epg:
     hosts:
-      - host: external.example.com
+      - host: myhost.com
         paths:
-          - path: /
-            pathType: Prefix
-            port: 80
-  ingresses:
-    epg:
-      hosts:
-        - host: myhost.com
-          paths:
-            - path: /handler/health
-              pathType: Exact
-              service: handler
-              portName: http
-        - subdomain: main  # Will be main.example.com if domain is set in generic.ingressesGeneral
-          paths:
-            - path: /main/health
-              pathType: Exact
-              service: main
-              portName: http
-        - host: ""  # Will use domain from generic.ingressesGeneral
-          paths:
-            - path: /main2/health
-              pathType: Exact
-              service: main2
-              portName: http
+          - path: /handler/health
+            pathType: Exact
+            service: handler
+            portName: http
+      - subdomain: main  # Will be main.example.com if domain is set in generic.ingressesGeneral
+        paths:
+          - path: /main/health
+            pathType: Exact
+            service: main
+            portName: http
+      - host: ""  # Will use domain from generic.ingressesGeneral
+        paths:
+          - path: /main2/health
+            pathType: Exact
+            service: main2
+            portName: http
