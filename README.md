@@ -1,28 +1,48 @@
-# Universal Kubernetes Helm Chart
+# 🚀 KS Universal Helm Chart
 
-A flexible and feature-rich Helm chart for deploying various Kubernetes resources. Designed to support multiple deployment scenarios while maintaining best practices and providing extensive customization options.
+> Universal Helm chart for deploying any type of application to Kubernetes with batteries included
 
-## Features
+[![Helm Version](https://img.shields.io/badge/helm-v3-blue)](https://helm.sh)
+[![Kubernetes Version](https://img.shields.io/badge/kubernetes-%3E%3D%201.19-blue)](https://kubernetes.io)
+[![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)
 
-- **Resource Types**: Deployments, CronJobs, Jobs, Services, Ingresses, ConfigMaps/Secrets, PVCs, HPAs, PDBs, ServiceMonitors, ServiceAccounts, Certificates
-- **Auto-creation**: Automatic creation of associated resources (Services, Ingress, Certificates, ServiceMonitors, PDBs)
-- **Monitoring**: Native Prometheus support
-- **Security**: SSL certificate management via cert-manager
-- **CI/CD**: Native support for Werf and GitHub Actions
-- **Multi-container**: Support for multi-container pods
-- **Configuration**: Flexible environment variables and config mounting
+## Table of Contents
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Chart Structure](#chart-structure)
+- [Configuration Reference](#configuration-reference)
+- [Auto-creation Features](#auto-creation-features)
+- [Advanced Features](#advanced-features)
+- [Documentation](#documentation)
 
-## Quick Start
+## ✨ Features
 
-Add the Helm repository:
+- 📦 **Resource Types**: Deployments, CronJobs, Jobs, Services, Ingresses, ConfigMaps/Secrets, PVCs
+- 🤖 **Auto-creation**: Automatic creation of associated resources
+- 📊 **Monitoring**: Native Prometheus support via ServiceMonitors
+- 🔒 **Security**: SSL certificate management via cert-manager
+- 🔄 **CI/CD**: Native Werf support
+- 🛠️ **Multi-container**: Support for sidecar patterns
+- ⚙️ **Configuration**: Flexible environment and secret management
+- 🎯 **Validation**: Built-in configuration validation
 
+## 📋 Prerequisites
+
+- Kubernetes 1.19+
+- Helm 3.0+
+- cert-manager (optional, for SSL certificates)
+- Prometheus Operator (optional, for monitoring)
+
+## 🚀 Quick Start
+
+1. Add the Helm repository:
 ```bash
 helm repo add ks-universal https://wowsel.github.io/ks-universal-chart
 helm repo update
 ```
 
-Basic deployment example:
-
+2. Create a basic values.yaml:
 ```yaml
 deployments:
   my-app:
@@ -38,95 +58,234 @@ deployments:
             containerPort: 8080
 ```
 
-## Documentation
+3. Install the chart:
+```bash
+helm install my-release ks-universal/ks-universal -f values.yaml
+```
 
-### Core Concepts
-- [Getting Started](docs/getting-started.md) - Basic concepts and first steps
-- [Auto-creation Features](docs/auto-creation.md) - Automatic resource creation
-- [Advanced Features](docs/advanced-features.md) - Advanced usage and patterns
-- [CI/CD and Values Management](docs/ci-cd.md) - CI/CD integration and values handling
+## 📑 Chart Structure
 
-### CI/CD Integration
-
-The chart supports seamless integration with various CI/CD platforms. Here's a basic GitHub Actions example:
+<details>
+<summary>Full Chart Structure</summary>
 
 ```yaml
-name: Deploy with Helm
+# Global deployment settings
+deploymentsGeneral:
+  securityContext: {}      # Pod security context
+  nodeSelector: {}         # Node selection constraints
+  tolerations: []         # Pod tolerations
+  affinity: {}            # Pod affinity rules
+  probes: {}              # Default probe configurations
+  lifecycle: {}           # Default lifecycle hooks
+  autoCreateServiceMonitor: false  # Enable ServiceMonitor creation
+  autoCreateSoftAntiAffinity: false  # Enable soft anti-affinity
 
-on:
-  push:
-    branches: [ main ]
+# Generic settings
+generic:
+  extraImagePullSecrets: []  # Global image pull secrets
+  ingressesGeneral: {}       # Global ingress configurations
+  serviceMonitorGeneral: {}  # Global ServiceMonitor settings
 
+# Deployments
+deployments:
+  deployment-name:
+    replicas: 1           # Number of pod replicas
+    containers:           # Container configurations
+      container-name:
+        image: nginx      # Container image
+        imageTag: latest  # Image tag
+        ports:           # Container ports
+          portName:
+            containerPort: 80
+            protocol: TCP
+        resources: {}     # Resource requests and limits
+        probes: {}       # Container probes
+        env: []          # Environment variables
+        envFrom: []      # Environment from ConfigMaps/Secrets
+        volumeMounts: [] # Volume mounts
+        lifecycle: {}    # Container lifecycle hooks
+        command: []      # Container command
+        args: []         # Command arguments
+        securityContext: {} # Container security context
+    
+    # Deployment features
+    autoCreateService: false        # Create Service automatically
+    autoCreateIngress: false        # Create Ingress automatically
+    autoCreateServiceMonitor: false # Create ServiceMonitor
+    autoCreatePdb: false           # Create PDB
+    autoCreateCertificate: false   # Create Certificate
+    autoCreateServiceAccount: false # Create ServiceAccount
+    autoCreateSoftAntiAffinity: false # Enable soft anti-affinity
+    
+    # Additional configurations
+    serviceType: ClusterIP    # Service type when autoCreateService is true
+    ingress: {}              # Ingress configuration
+    certificate: {}          # Certificate configuration
+    serviceMonitor: {}       # ServiceMonitor configuration
+    pdbConfig: {}           # PDB configuration
+    serviceAccount: {}       # ServiceAccount configuration
+    
+    # Scaling and availability
+    hpa:                     # HPA configuration
+      minReplicas: 1
+      maxReplicas: 10
+      metrics: []
+    
+    # Database migrations
+    migrations:
+      enabled: false
+      args: []
+      backoffLimit: 1
+    
+    # Resources
+    volumes: []             # Pod volumes
+    nodeSelector: {}        # Node selection
+    tolerations: []        # Pod tolerations
+    affinity: {}           # Pod affinity rules
+    annotations: {}        # Deployment annotations
+    podAnnotations: {}     # Pod annotations
+
+# CronJobs
+cronJobs:
+  cronjob-name:
+    schedule: "* * * * *"
+    timezone: ""
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 1
+    concurrencyPolicy: Allow
+    containers: {}     # Same structure as deployment containers
+    volumes: []
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# One-time Jobs
 jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-        
-      - name: Deploy
-        run: |
-          helm upgrade --install my-release ks-universal/ks-universal \
-            -f values.yaml \
-            -f values.prod.yaml \
-            --namespace my-namespace
+  job-name:
+    activeDeadlineSeconds: null
+    backoffLimit: 6
+    containers: {}     # Same structure as deployment containers
+    volumes: []
+    nodeSelector: {}
+    tolerations: []
+    affinity: {}
+
+# Configurations
+configs:
+  config-name:
+    type: configMap    # or "secret"
+    data: {}          # Key-value pairs
+
+# Standalone Services
+services:
+  service-name:
+    type: ClusterIP
+    ports:
+      - name: http
+        port: 80
+        targetPort: 80
+        protocol: TCP
+
+# PersistentVolumeClaims
+persistentVolumeClaims:
+  pvc-name:
+    accessModes: []
+    storageClassName: ""
+    size: 1Gi
+
+# Standalone Ingresses
+ingresses:
+  ingress-name:
+    annotations: {}
+    ingressClassName: ""
+    tls: []
+    hosts: []
+```
+</details>
+
+## 🌟 Key Features Explained
+
+### 🔄 Auto-creation Features
+
+The chart can automatically create associated resources based on your configuration:
+
+| Feature | Description | Activation |
+|---------|-------------|------------|
+| Service | Creates Service based on container ports | `autoCreateService: true` |
+| Ingress | Creates Ingress with optional SSL | `autoCreateIngress: true` |
+| Certificate | Manages SSL certificates via cert-manager | `autoCreateCertificate: true` |
+| ServiceMonitor | Creates Prometheus ServiceMonitor | `autoCreateServiceMonitor: true` |
+| PDB | Creates PodDisruptionBudget | `autoCreatePdb: true` |
+| ServiceAccount | Creates dedicated ServiceAccount | `autoCreateServiceAccount: true` |
+
+### 🔐 Secret Management
+
+Advanced secret management with secret references:
+
+```yaml
+secretRefs:
+  shared-secrets:
+    - name: API_KEY
+      secretKeyRef:
+        name: app-secrets
+        key: api-key
+
+deployments:
+  my-app:
+    containers:
+      main:
+        secretRefs:
+          - shared-secrets  # Reference shared secrets
 ```
 
-For detailed CI/CD configuration and values management strategies, see our [CI/CD and Values Management Guide](docs/ci-cd.md).
+#### Please look at the [werf website](https://werf.io/docs/latest/usage/deploy/values.html#secret-parameters-werf-only) for a safe way to store secrets in the git. And our [integration guide](docs/werf-integration.md)
 
-### Values Management
+### 📊 Monitoring Integration
 
-The chart supports flexible values management across different environments:
+Native Prometheus monitoring support:
 
-```plaintext
-/
-├── values.yaml           # Base configuration
-├── values.dev.yaml       # Development overrides
-├── values.staging.yaml   # Staging overrides
-└── values.prod.yaml      # Production overrides
+```yaml
+deployments:
+  my-app:
+    autoCreateServiceMonitor: true
+    containers:
+      main:
+        ports:
+          http-metrics:
+            containerPort: 9090
 ```
 
-Example usage:
-```bash
-# Development
-helm upgrade --install my-app ks-universal/ks-universal -f values.yaml -f values.dev.yaml
+### 🔄 Database Migrations
 
-# Production
-helm upgrade --install my-app ks-universal/ks-universal -f values.yaml -f values.prod.yaml
+Built-in support for database migrations:
+
+```yaml
+deployments:
+  my-app:
+    migrations:
+      enabled: true
+      args: ["migrate", "up"]
 ```
 
-See the [CI/CD and Values Management Guide](docs/ci-cd.md) for detailed examples and best practices.
+## 📚 Documentation
 
-### Features
-- [Monitoring](docs/monitoring.md) - Prometheus integration and monitoring
-- [Database Migrations](docs/database-migrations.md) - Database operations and migrations
-- [Werf Integration](docs/werf-integration.md) - Using with Werf
+Detailed documentation is available in the [docs](docs) directory:
 
-### Examples
-- [Simple Web Application](examples/simple-web-app)
-- [Microservices Architecture](examples/microservices)
-- [Database Application](examples/database-app)
-- [Monitoring Setup](examples/monitoring)
+- [Getting Started](docs/getting-started.md)
+- [Auto-creation Features](docs/auto-creation.md)
+- [Monitoring](docs/monitoring.md)
+- [Database Migrations](docs/database-migrations.md)
+- [Advanced Features](docs/advanced-features.md)
+- [FAQ](docs/faq.md)
 
-## Contributing
+## 🤝 Contributing
 
-We welcome contributions! Please check our [Contributing Guidelines](CONTRIBUTING.md) for details.
+Contributions are welcome! Please read our [Contributing Guidelines](CONTRIBUTING.md).
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
 
-## Requirements
+## 🙏 Acknowledgments
 
-- Kubernetes 1.19+
-- Helm 3.0+
-- cert-manager (optional, for SSL certificates)
-- Prometheus Operator (optional, for monitoring)
-
-## Support
-
-For questions and support:
-- [Open an issue](https://github.com/wowsel/ks-universal-chart/issues)
-- Check our [FAQ](docs/faq.md)
+Special thanks to the Kubernetes and Helm communities for inspiration and best practices.

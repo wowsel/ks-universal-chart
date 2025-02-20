@@ -1,15 +1,34 @@
-# Frequently Asked Questions
+# ❓ Frequently Asked Questions
 
-## General Questions
+## 📑 Table of Contents
+- [General Questions](#general-questions)
+- [Deployment Questions](#deployment-questions)
+- [Configuration Questions](#configuration-questions)
+- [Monitoring Questions](#monitoring-questions)
+- [Scaling Questions](#scaling-questions)
+- [Security Questions](#security-questions)
+- [Integration Questions](#integration-questions)
+- [Troubleshooting](#troubleshooting)
 
-### How do I upgrade the chart version?
+## 🌟 General Questions
+
+<details>
+<summary>How do I upgrade the chart version?</summary>
+
 ```bash
+# Update repository
 helm repo update
+
+# Upgrade your release
 helm upgrade my-release ks-universal/ks-universal -f values.yaml
 ```
+</details>
 
-### Can I use this chart with multiple environments?
+<details>
+<summary>Can I use this chart with multiple environments?</summary>
+
 Yes, you can maintain separate value files for different environments:
+
 ```yaml
 # values.prod.yaml
 generic:
@@ -22,19 +41,42 @@ generic:
     domain: staging.example.com
 ```
 
-### How can I validate my values.yaml before applying?
+Then use them accordingly:
 ```bash
-helm template my-release ks-universal/ks-universal -f values.yaml
+# For production
+helm upgrade -f values.yaml -f values.prod.yaml
+
+# For staging
+helm upgrade -f values.yaml -f values.staging.yaml
 ```
+</details>
 
-## Deployment Questions
+<details>
+<summary>How can I validate my values.yaml before applying?</summary>
 
-### How do I expose my application externally?
+```bash
+# Using helm template
+helm template my-release ks-universal/ks-universal -f values.yaml
+
+# Using helm lint
+helm lint .
+
+# Using helm upgrade with dry-run
+helm upgrade --install my-release ks-universal/ks-universal -f values.yaml --dry-run
+```
+</details>
+
+## 🚀 Deployment Questions
+
+<details>
+<summary>How do I expose my application externally?</summary>
+
 Use autoCreateIngress with appropriate host configuration:
 ```yaml
 deployments:
   my-app:
     autoCreateIngress: true
+    autoCreateCertificate: true  # If you need HTTPS
     ingress:
       hosts:
         - host: myapp.example.com
@@ -43,8 +85,28 @@ deployments:
               pathType: Prefix
 ```
 
-### How do I set up SSL/TLS for my ingress?
-Enable autoCreateCertificate:
+Or use a subdomain with a global domain:
+```yaml
+generic:
+  ingressesGeneral:
+    domain: example.com
+
+deployments:
+  myapp:
+    autoCreateIngress: true
+    ingress:
+      hosts:
+        - subdomain: api  # Will be api.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+```
+</details>
+
+<details>
+<summary>How do I configure SSL/TLS for my ingress?</summary>
+
+Enable autoCreateCertificate and configure certificate settings:
 ```yaml
 deployments:
   my-app:
@@ -53,8 +115,11 @@ deployments:
     certificate:
       clusterIssuer: letsencrypt-prod
 ```
+</details>
 
-### How do I configure resource limits?
+<details>
+<summary>How do I configure resource limits?</summary>
+
 ```yaml
 deployments:
   my-app:
@@ -68,10 +133,13 @@ deployments:
             cpu: 200m
             memory: 256Mi
 ```
+</details>
 
-## Configuration Questions
+## ⚙️ Configuration Questions
 
-### How do I share configuration between deployments?
+<details>
+<summary>How do I share configuration between deployments?</summary>
+
 Use deploymentsGeneral for shared settings:
 ```yaml
 deploymentsGeneral:
@@ -83,8 +151,11 @@ deploymentsGeneral:
         path: /health
         port: http
 ```
+</details>
 
-### How do I manage secrets?
+<details>
+<summary>How do I manage secrets?</summary>
+
 Use the configs section with type: secret:
 ```yaml
 configs:
@@ -95,7 +166,35 @@ configs:
       DB_PASSWORD: your-db-password
 ```
 
-### How do I configure database migrations?
+For storing secrets in git, we support two recommended approaches:
+
+1. Using [werf secret management](https://werf.io/docs/latest/usage/deploy/values.html#working-with-secret-parameter-files):
+```bash
+# Encrypt sensitive data with werf
+werf helm secret values edit .helm/secret-values.yaml
+```
+
+2. Using [SOPS](https://github.com/getsops/sops):
+```bash
+# Create a new encrypted secrets file
+sops -e -i values.secrets.yaml
+
+# Edit encrypted secrets
+sops values.secrets.yaml
+```
+
+Example of using SOPS with helm:
+```bash
+# Deploy with decrypted secrets
+helm upgrade my-release ks-universal/ks-universal \
+  -f values.yaml \
+  -f <(sops -d values.secrets.yaml)
+```
+</details>
+
+<details>
+<summary>How do I configure database migrations?</summary>
+
 Enable migrations in your deployment:
 ```yaml
 deployments:
@@ -105,11 +204,13 @@ deployments:
       args: ["migrate", "up"]
       backoffLimit: 3
 ```
+</details>
 
-## Monitoring Questions
+## 📊 Monitoring Questions
 
-### How do I enable Prometheus monitoring?
-Use autoCreateServiceMonitor:
+<details>
+<summary>How do I enable Prometheus monitoring?</summary>
+
 ```yaml
 deployments:
   my-app:
@@ -120,8 +221,11 @@ deployments:
           http-metrics:
             containerPort: 9090
 ```
+</details>
 
-### How do I configure custom metrics?
+<details>
+<summary>How do I configure custom metrics?</summary>
+
 ```yaml
 serviceMonitor:
   endpoints:
@@ -129,10 +233,13 @@ serviceMonitor:
       interval: 15s
       path: /custom-metrics
 ```
+</details>
 
-## Scaling Questions
+## 📈 Scaling Questions
 
-### How do I configure automatic scaling?
+<details>
+<summary>How do I configure automatic scaling?</summary>
+
 Use HPA configuration:
 ```yaml
 deployments:
@@ -148,8 +255,11 @@ deployments:
               type: Utilization
               averageUtilization: 80
 ```
+</details>
 
-### How do I ensure high availability?
+<details>
+<summary>How do I ensure high availability?</summary>
+
 1. Enable PDB:
 ```yaml
 deployments:
@@ -165,10 +275,56 @@ deployments:
   my-app:
     autoCreateSoftAntiAffinity: true
 ```
+</details>
 
-## Integration Questions
+## 🔒 Security Questions
 
-### How do I use this chart with Werf?
+<details>
+<summary>How do I configure pod security?</summary>
+
+```yaml
+deployments:
+  my-app:
+    securityContext:
+      runAsNonRoot: true
+      runAsUser: 1000
+    containers:
+      main:
+        securityContext:
+          allowPrivilegeEscalation: false
+          capabilities:
+            drop:
+              - ALL
+```
+</details>
+
+<details>
+<summary>How do I restrict network access?</summary>
+
+Use network policies:
+```yaml
+networkPolicies:
+  app:
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: my-app
+      policyTypes:
+        - Ingress
+        - Egress
+      ingress:
+        - from:
+            - podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: frontend
+```
+</details>
+
+## 🔄 Integration Questions
+
+<details>
+<summary>How do I use this chart with Werf?</summary>
+
 Add dependency in Chart.yaml:
 ```yaml
 dependencies:
@@ -190,7 +346,12 @@ deployments:
         imageTag: "{{ $.Values.werf.tag.myImage }}"
 ```
 
-### How do I use custom domains with ingress?
+See our [Werf Integration Guide](werf-integration.md) for more details.
+</details>
+
+<details>
+<summary>How do I use custom domains with ingress?</summary>
+
 You can use either global domain or specific hosts:
 ```yaml
 generic:
@@ -204,11 +365,15 @@ deployments:
         - subdomain: api    # Will be api.example.com
         - host: custom.domain.com  # Custom domain
 ```
+</details>
 
-## Troubleshooting
+## 🔧 Troubleshooting
 
-### Why isn't my service accessible?
-1. Check service creation:
+<details>
+<summary>Common Issues</summary>
+
+### 1. Service not accessible
+- Check service creation:
 ```yaml
 deployments:
   my-app:
@@ -219,23 +384,47 @@ deployments:
           http:
             containerPort: 8080
 ```
+- Verify port configurations match
+- Check endpoints exist
 
-2. Verify port configurations match
+### 2. Certificates not being created
+- Ensure cert-manager is installed
+- Check clusterIssuer exists
+- Verify ingress configuration
 
-### Why aren't my certificates being created?
-1. Ensure cert-manager is installed
-2. Check clusterIssuer exists
-3. Verify ingress configuration
+### 3. Resource issues
+- Check resource requests and limits
+- Use `kubectl describe pod` to check events
+- Review container logs
+</details>
 
-### How do I debug resource issues?
-1. Check resource requests and limits
-2. Use kubectl describe pod
-3. Review container logs
+<details>
+<summary>Debug Commands</summary>
 
-## Best Practices
+```bash
+# Check pod status
+kubectl get pods -l app.kubernetes.io/instance=my-release
 
-### Should I use autoCreateService with autoCreateIngress?
-Yes, ingress requires a service to function:
+# Check logs
+kubectl logs -l app.kubernetes.io/instance=my-release
+
+# Check events
+kubectl get events --sort-by=.metadata.creationTimestamp
+
+# Check service endpoints
+kubectl get endpoints my-service
+
+# Check ingress status
+kubectl describe ingress my-ingress
+```
+</details>
+
+## 💡 Best Practices
+
+<details>
+<summary>Recommended Practices</summary>
+
+1. **Always use autoCreateService with autoCreateIngress**:
 ```yaml
 deployments:
   my-app:
@@ -243,8 +432,13 @@ deployments:
     autoCreateIngress: true
 ```
 
-### How should I organize my values files?
-Maintain separate files for:
+2. **Organize values files by environment**:
 - Base configuration (values.yaml)
 - Environment-specific (values.prod.yaml, values.staging.yaml)
 - Secret configuration (values.secrets.yaml)
+
+3. **Use resource limits and requests**
+4. **Enable monitoring for important services**
+5. **Configure proper health checks**
+6. **Use proper security contexts**
+</details>

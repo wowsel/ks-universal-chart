@@ -1,15 +1,15 @@
-# Getting Started with ks-universal
+# 🚀 Getting Started with KS Universal
 
 This guide will help you understand the basic concepts of the ks-universal chart and get your first application deployed.
 
-## Table of Contents
+## 📑 Table of Contents
 - [Basic Concepts](#basic-concepts)
 - [Installation](#installation)
 - [First Deployment](#first-deployment)
-- [Configuration Structure](#configuration-structure)
+- [Common Patterns](#common-patterns)
 - [Next Steps](#next-steps)
 
-## Basic Concepts
+## 🎯 Basic Concepts
 
 The ks-universal chart is built around several key concepts:
 
@@ -27,7 +27,7 @@ The ks-universal chart is built around several key concepts:
    - Generic settings (`generic`)
    - Resource-specific settings
 
-## Installation
+## 🛠️ Installation
 
 1. Add the Helm repository:
 ```bash
@@ -40,9 +40,12 @@ helm repo update
 helm install my-release ks-universal/ks-universal -f values.yaml
 ```
 
-## First Deployment
+## 📦 First Deployment
 
 Let's create a simple web application deployment:
+
+<details>
+<summary>Basic Web Application</summary>
 
 ```yaml
 # values.yaml
@@ -78,92 +81,80 @@ deployments:
             - path: /
               pathType: Prefix
 ```
+</details>
 
-Deploy with:
-```bash
-helm upgrade --install my-app ks-universal/ks-universal -f values.yaml
-```
-
-This will create:
-- A Deployment running nginx
-- A Service exposing port 80
-- An Ingress routing traffic to myapp.example.com
-
-## Configuration Structure
-
-The chart uses a hierarchical configuration structure:
+<details>
+<summary>Application with Database</summary>
 
 ```yaml
-# Global settings for all deployments
-deploymentsGeneral:
-  securityContext:
-    runAsNonRoot: true
-  probes:
-    livenessProbe:
-      httpGet:
-        path: /health
-        port: http
-
-# Generic settings across resources
-generic:
-  ingressesGeneral:
-    domain: example.com
-  serviceMonitorGeneral:
-    interval: 30s
-
-# Specific deployments
 deployments:
-  app-name:
-    # Inherits and can override global settings
+  app:
+    autoCreateService: true
+    autoCreateIngress: true
     containers:
       main:
         image: my-app
         imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+        env:
+          - name: DB_HOST
+            value: postgresql
+          - name: DB_NAME
+            value: myapp
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: username
+
+  postgresql:
+    autoCreateService: true
+    containers:
+      main:
+        image: postgres
+        imageTag: "14-alpine"
+        ports:
+          postgresql:
+            containerPort: 5432
+        env:
+          - name: POSTGRES_DB
+            value: myapp
+          - name: POSTGRES_USER
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: username
+          - name: POSTGRES_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: db-secrets
+                key: password
+        volumeMounts:
+          - name: data
+            mountPath: /var/lib/postgresql/data
+    volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: postgresql-data
+
+configs:
+  db-secrets:
+    type: secret
+    data:
+      username: your-username
+      password: your-password
+
+persistentVolumeClaims:
+  postgresql-data:
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
 ```
+</details>
 
-### Key Components
-
-1. **Deployment Configuration**
-   - Container settings
-   - Resource requirements
-   - Volume mounts
-   - Environment variables
-
-2. **Auto-creation Features**
-   ```yaml
-   deployments:
-     my-app:
-       autoCreateService: true
-       autoCreateIngress: true
-       autoCreateServiceMonitor: true
-       autoCreatePdb: true
-       autoCreateCertificate: true
-   ```
-
-3. **Container Configuration**
-   ```yaml
-   containers:
-     main:
-       image: my-app
-       imageTag: v1.0.0
-       ports:
-         http:
-           containerPort: 8080
-       env:
-         - name: ENV_VAR
-           value: "value"
-   ```
-
-## Next Steps
-
-After getting familiar with basic deployment, you might want to explore:
-
-1. [Auto-creation Features](auto-creation.md) - Learn about automatic resource creation
-2. [Monitoring](monitoring.md) - Set up Prometheus monitoring
-3. [Database Migrations](database-migrations.md) - Handle database operations
-4. [Advanced Features](advanced-features.md) - Explore advanced capabilities
-
-## Common Patterns
+## 🔄 Common Patterns
 
 ### Web Application
 ```yaml
@@ -215,7 +206,7 @@ deployments:
             memory: 256Mi
 ```
 
-## Tips and Best Practices
+## 💡 Tips and Best Practices
 
 1. **Start Simple**
    - Begin with basic deployment configuration
@@ -236,3 +227,60 @@ deployments:
    - Configure appropriate probes
    - Set reasonable timeout values
    - Use startup probes for slow-starting applications
+
+## 🔜 Next Steps
+
+After getting familiar with basic deployment, you might want to explore:
+
+1. [Auto-creation Features](auto-creation.md) - Learn about automatic resource creation
+2. [Monitoring](monitoring.md) - Set up Prometheus monitoring
+3. [Database Migrations](database-migrations.md) - Handle database operations
+4. [Advanced Features](advanced-features.md) - Explore advanced capabilities
+
+## 🔍 Validation and Debugging
+
+To validate your values before applying:
+```bash
+helm template my-release ks-universal/ks-universal -f values.yaml
+```
+
+To check the status of your deployment:
+```bash
+kubectl get all -l app.kubernetes.io/instance=my-release
+```
+
+## 🆘 Common Issues and Solutions
+
+<details>
+<summary>Service not accessible</summary>
+
+1. Check if service is created:
+```bash
+kubectl get svc
+```
+
+2. Verify endpoints:
+```bash
+kubectl get endpoints
+```
+
+3. Common solutions:
+- Ensure `autoCreateService: true` is set
+- Check container port configuration
+- Verify pod labels match service selector
+</details>
+
+<details>
+<summary>Ingress not working</summary>
+
+1. Check ingress configuration:
+```bash
+kubectl get ingress
+kubectl describe ingress <name>
+```
+
+2. Common solutions:
+- Verify DNS configuration
+- Check SSL certificate status if using HTTPS
+- Ensure ingress controller is installed
+</details>

@@ -1,16 +1,104 @@
-# CI/CD and Values Management
+# 🚀 CI/CD and Values Management
 
 This guide explains how to effectively use the ks-universal chart in CI/CD pipelines and manage values across different environments.
 
-## Table of Contents
-- [GitHub Actions Integration](#github-actions-integration)
+## 📑 Table of Contents
 - [Values Management](#values-management)
-- [Examples](#examples)
+- [CI/CD Setup](#ci-cd-setup)
 - [Best Practices](#best-practices)
+- [Examples](#examples)
 
-## GitHub Actions Integration
+## 📊 Values Management
 
-### Basic Deployment Workflow
+### Values Structure
+
+Recommended values file organization:
+```plaintext
+/
+├── values.yaml           # Base configuration
+├── values.dev.yaml       # Development overrides
+├── values.staging.yaml   # Staging overrides
+├── values.prod.yaml      # Production overrides
+└── secret-values.yaml    # Secret values
+```
+
+### Base Configuration (values.yaml)
+
+<details>
+<summary>Base Configuration Example</summary>
+
+```yaml
+# values.yaml
+deploymentsGeneral:
+  securityContext:
+    runAsNonRoot: true
+  probes:
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: http
+
+deployments:
+  backend:
+    replicas: 2
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        resources:
+          requests:
+            cpu: 100m
+            memory: 128Mi
+```
+</details>
+
+### Environment Overrides
+
+<details>
+<summary>Environment-specific Configurations</summary>
+
+```yaml
+# values.dev.yaml
+generic:
+  ingressesGeneral:
+    domain: dev.example.com
+
+deployments:
+  backend:
+    replicas: 1  # Reduce replicas for dev
+    containers:
+      main:
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+
+# values.prod.yaml
+generic:
+  ingressesGeneral:
+    domain: example.com
+
+deployments:
+  backend:
+    replicas: 3  # More replicas for production
+    hpa:
+      minReplicas: 3
+      maxReplicas: 10
+    containers:
+      main:
+        resources:
+          requests:
+            cpu: 200m
+            memory: 256Mi
+```
+</details>
+
+## 🛠️ CI/CD Setup
+
+### GitHub Actions
+
+<details>
+<summary>Basic GitHub Actions Workflow</summary>
 
 ```yaml
 # .github/workflows/deploy.yml
@@ -50,8 +138,12 @@ jobs:
             --atomic \
             --timeout 5m
 ```
+</details>
 
-### Advanced Multi-environment Workflow
+### Advanced Multi-environment Setup
+
+<details>
+<summary>Multi-environment Workflow</summary>
 
 ```yaml
 # .github/workflows/deploy.yml
@@ -109,172 +201,55 @@ jobs:
             --namespace ${{ matrix.environment }} \
             --create-namespace \
             --atomic \
-            --timeout 5m \
-            --set global.environment=${{ matrix.environment }}
-```
-
-## Values Management
-
-### Values Structure
-
-```plaintext
-/
-├── values.yaml           # Base configuration
-├── values.dev.yaml       # Development overrides
-├── values.staging.yaml   # Staging overrides
-├── values.prod.yaml      # Production overrides
-└── values.secret.yaml    # Secret values (gitignored)
-```
-
-### Base Configuration (values.yaml)
-
-```yaml
-# values.yaml
-deploymentsGeneral:
-  securityContext:
-    runAsNonRoot: true
-  probes:
-    livenessProbe:
-      httpGet:
-        path: /health
-        port: http
-
-deployments:
-  backend:
-    replicas: 2
-    containers:
-      main:
-        image: my-app
-        imageTag: v1.0.0
-        resources:
-          requests:
-            cpu: 100m
-            memory: 128Mi
-```
-
-### Environment Overrides
-
-```yaml
-# values.dev.yaml
-generic:
-  ingressesGeneral:
-    domain: dev.example.com
-
-deployments:
-  backend:
-    replicas: 1  # Reduce replicas for dev
-    containers:
-      main:
-        resources:
-          requests:
-            cpu: 50m
-            memory: 64Mi
-
-# values.prod.yaml
-generic:
-  ingressesGeneral:
-    domain: example.com
-
-deployments:
-  backend:
-    replicas: 3  # More replicas for production
-    hpa:
-      minReplicas: 3
-      maxReplicas: 10
-    containers:
-      main:
-        resources:
-          requests:
-            cpu: 200m
-            memory: 256Mi
-```
-
-## Examples
-
-### Development Setup
-
-```bash
-# Local development
-helm upgrade --install my-app ks-universal/ks-universal \
-  -f values.yaml \
-  -f values.dev.yaml \
-  --namespace development
-
-# With additional overrides
-helm upgrade --install my-app ks-universal/ks-universal \
-  -f values.yaml \
-  -f values.dev.yaml \
-  --set deployments.backend.replicas=1
-```
-
-### CI/CD Pipeline Example
-
-```yaml
-# .github/workflows/deploy.yml
-name: Deploy Application
-
-on:
-  push:
-    branches: [ main, develop ]
-  pull_request:
-    branches: [ develop ]
-
-jobs:
-  validate:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set environment
-        id: env
-        run: |
-          if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
-            echo "env_name=prod" >> $GITHUB_OUTPUT
-          else
-            echo "env_name=staging" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-      
-      - name: Validate Helm templates
-        run: |
-          helm template my-app ks-universal/ks-universal \
-            -f values.yaml \
-            -f values.${{ steps.env.outputs.env_name }}.yaml \
-            --namespace ${{ steps.env.outputs.env_name }}
-
-  deploy:
-    needs: validate
-    if: github.event_name == 'push'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      
-      - name: Set environment
-        id: env
-        run: |
-          if [[ ${{ github.ref }} == 'refs/heads/main' ]]; then
-            echo "env_name=prod" >> $GITHUB_OUTPUT
-          else
-            echo "env_name=staging" >> $GITHUB_OUTPUT
-          fi
-      
-      - name: Install Helm
-        uses: azure/setup-helm@v3
-      
-      - name: Deploy
-        run: |
-          helm upgrade --install my-app ks-universal/ks-universal \
-            -f values.yaml \
-            -f values.${{ steps.env.outputs.env_name }}.yaml \
-            --namespace ${{ steps.env.outputs.env_name }} \
-            --create-namespace \
-            --atomic \
             --timeout 5m
 ```
+</details>
 
-## Best Practices
+### GitLab CI
+
+<details>
+<summary>GitLab CI Pipeline</summary>
+
+```yaml
+# .gitlab-ci.yml
+variables:
+  HELM_VERSION: v3.12.0
+
+.helm_deploy:
+  before_script:
+    - curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+    - helm repo add ks-universal https://wowsel.github.io/ks-universal-chart
+    - helm repo update
+
+deploy_staging:
+  extends: .helm_deploy
+  script:
+    - helm upgrade --install my-app ks-universal/ks-universal
+      -f values.yaml
+      -f values.staging.yaml
+      --namespace staging
+      --atomic
+      --timeout 5m
+  environment:
+    name: staging
+
+deploy_production:
+  extends: .helm_deploy
+  script:
+    - helm upgrade --install my-app ks-universal/ks-universal
+      -f values.yaml
+      -f values.prod.yaml
+      --namespace production
+      --atomic
+      --timeout 5m
+  environment:
+    name: production
+  rules:
+    - if: $CI_COMMIT_TAG
+```
+</details>
+
+## 💡 Best Practices
 
 ### 1. Values Organization
 
@@ -305,42 +280,12 @@ jobs:
 - Implement proper RBAC
 - Configure network policies per environment
 
-## Tips for Values Management
-
-1. **Base Values Structure**
-   ```yaml
-   # values.yaml
-   deploymentsGeneral:  # Common settings
-   generic:             # Generic configurations
-   deployments:         # Application definitions
-   configs:            # Shared configurations
-   ```
-
-2. **Environment Overrides**
-   ```yaml
-   # values.prod.yaml
-   generic:
-     ingressesGeneral:
-       domain: prod.example.com
-   deployments:
-     app:
-       replicas: 3     # Production-specific
-   ```
-
-3. **Local Development**
-   ```yaml
-   # values.dev.yaml
-   generic:
-     ingressesGeneral:
-       domain: dev.local
-   deployments:
-     app:
-       replicas: 1     # Development-specific
-   ```
-
-## Common Patterns
+## 📝 Examples
 
 ### Feature Branch Testing
+
+<details>
+<summary>Feature Branch Workflow</summary>
 
 ```yaml
 # .github/workflows/feature.yml
@@ -369,8 +314,12 @@ jobs:
             --namespace $NAMESPACE \
             --create-namespace
 ```
+</details>
 
 ### Production Deployment
+
+<details>
+<summary>Production Deployment Workflow</summary>
 
 ```yaml
 # .github/workflows/production.yml
@@ -400,3 +349,66 @@ jobs:
             --atomic \
             --timeout 10m
 ```
+</details>
+
+### Canary Deployment
+
+<details>
+<summary>Canary Deployment Configuration</summary>
+
+```yaml
+# values.yaml
+deployments:
+  app-stable:
+    replicas: 9
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+
+  app-canary:
+    replicas: 1
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.1.0
+```
+</details>
+
+## 🔍 Validation and Testing
+
+### Pre-deployment Validation
+
+<details>
+<summary>Validation Steps</summary>
+
+```bash
+# Template validation
+helm template my-app ks-universal/ks-universal -f values.yaml
+
+# Lint check
+helm lint .
+
+# Dry run
+helm upgrade --install my-app ks-universal/ks-universal \
+  -f values.yaml \
+  --dry-run
+```
+</details>
+
+### Post-deployment Verification
+
+<details>
+<summary>Verification Steps</summary>
+
+```bash
+# Check deployment status
+kubectl get deployments -n my-namespace
+
+# View logs
+kubectl logs -l app.kubernetes.io/instance=my-app -n my-namespace
+
+# Check resources
+kubectl get all,ing,pvc -l app.kubernetes.io/instance=my-app -n my-namespace
+```
+</details>

@@ -1,18 +1,19 @@
-# Advanced Features
+# 🛠️ Advanced Features
 
 This guide covers advanced features and patterns available in the ks-universal chart.
 
-## Table of Contents
+## 📑 Table of Contents
 - [Values Inheritance](#values-inheritance)
 - [Complex Deployments](#complex-deployments)
 - [Advanced Scheduling](#advanced-scheduling)
 - [Security Features](#security-features)
 - [Resource Management](#resource-management)
-- [Custom Configurations](#custom-configurations)
+- [Advanced Networking](#advanced-networking)
 
-## Values Inheritance
+## 🔄 Values Inheritance
 
-The chart supports sophisticated values inheritance and merging:
+<details>
+<summary>Values Inheritance Configuration</summary>
 
 ```yaml
 # Global settings
@@ -44,10 +45,14 @@ deployments:
             httpGet:
               path: /custom-health
 ```
+</details>
 
-## Complex Deployments
+## 📦 Complex Deployments
 
 ### Multi-container Pods
+
+<details>
+<summary>Multi-container Configuration</summary>
 
 ```yaml
 deployments:
@@ -70,96 +75,25 @@ deployments:
         volumeMounts:
           - name: cache-data
             mountPath: /data
-    
-    volumes:
-      - name: logs
-        emptyDir: {}
-      - name: cache-data
-        emptyDir: {}
-
-### Service Mesh Integration
-
-```yaml
-deployments:
-  my-app:
-    podAnnotations:
-      sidecar.istio.io/inject: "true"
-    
-    containers:
-      main:
-        image: my-app
-        imageTag: v1.0.0
-        ports:
-          http:
-            containerPort: 8080
-```
-
-### Custom Metrics
-
-```yaml
-deployments:
-  my-app:
-    autoCreateServiceMonitor: true
-    containers:
-      main:
-        ports:
-          http-metrics:
-            containerPort: 9090
-    
-    serviceMonitor:
-      endpoints:
-        - port: http-metrics
-          interval: 15s
-          metricRelabelings:
-            - sourceLabels: [__name__]
-              regex: '^container_.*'
-              action: drop
-```
-
-## Tips and Best Practices
-
-1. **Resource Management**
-   - Always specify resource requests and limits
-   - Use HPA for dynamic scaling
-   - Consider using PodDisruptionBudget
-
-2. **Security**
-   - Enable securityContext
-   - Use non-root users
-   - Implement network policies
-   - Regularly rotate secrets
-
-3. **High Availability**
-   - Use pod anti-affinity
-   - Implement proper health checks
-   - Configure appropriate update strategies
-
-4. **Monitoring**
-   - Set up comprehensive metrics
-   - Configure proper alert rules
-   - Use appropriate scraping intervals
-
-5. **Configuration**
-   - Use ConfigMaps for configuration
-   - Implement proper secret management
-   - Consider using external configuration stores
-
-## Additional Resources
-
-- [Kubernetes Documentation](https://kubernetes.io/docs/)
-- [Helm Best Practices](https://helm.sh/docs/chart_best_practices/)
-- [Prometheus Operator](https://github.com/prometheus-operator/prometheus-operator)
-- [cert-manager Documentation](https://cert-manager.io/docs/)Port: 6379
       
+      # Metrics sidecar
       metrics:
         image: prometheus-exporter
         imageTag: v1.0.0
         ports:
           metrics:
             containerPort: 9090
+        
+    volumes:
+      - name: cache-data
+        emptyDir: {}
 ```
+</details>
 
 ### Advanced Init Containers
+
+<details>
+<summary>Init Containers Configuration</summary>
 
 ```yaml
 deployments:
@@ -175,21 +109,25 @@ deployments:
           - name: config
             mountPath: /config
       
-      wait-for-db:
-        image: postgres
+      wait-for-deps:
+        image: alpine
         command: 
           - '/bin/sh'
           - '-c'
           - |
-            until pg_isready -h $DB_HOST -p $DB_PORT; do
-              echo "waiting for database"
+            until nc -z service-name 5432; do
+              echo "waiting for dependency"
               sleep 2
             done
 ```
+</details>
 
-## Advanced Scheduling
+## 🎯 Advanced Scheduling
 
 ### Node Affinity
+
+<details>
+<summary>Node Affinity Configuration</summary>
 
 ```yaml
 deployments:
@@ -214,8 +152,12 @@ deployments:
                   app.kubernetes.io/name: my-app
               topologyKey: kubernetes.io/hostname
 ```
+</details>
 
 ### Topology Spread Constraints
+
+<details>
+<summary>Topology Spread Configuration</summary>
 
 ```yaml
 deployments:
@@ -228,10 +170,14 @@ deployments:
           matchLabels:
             app.kubernetes.io/name: my-app
 ```
+</details>
 
-## Security Features
+## 🔒 Security Features
 
 ### Pod Security Context
+
+<details>
+<summary>Security Context Configuration</summary>
 
 ```yaml
 deployments:
@@ -252,8 +198,12 @@ deployments:
             drop:
               - ALL
 ```
+</details>
 
 ### Network Policies
+
+<details>
+<summary>Network Policy Configuration</summary>
 
 ```yaml
 networkPolicies:
@@ -276,10 +226,14 @@ networkPolicies:
                 matchLabels:
                   app.kubernetes.io/name: database
 ```
+</details>
 
-## Resource Management
+## 📊 Resource Management
 
 ### Advanced HPA Configuration
+
+<details>
+<summary>HPA with Custom Metrics</summary>
 
 ```yaml
 deployments:
@@ -314,8 +268,12 @@ deployments:
               value: 50
               periodSeconds: 60
 ```
+</details>
 
 ### Resource Quotas
+
+<details>
+<summary>Resource Quota Configuration</summary>
 
 ```yaml
 resourceQuotas:
@@ -326,98 +284,61 @@ resourceQuotas:
       limits.cpu: "8"
       limits.memory: 16Gi
 ```
+</details>
 
-## Custom Configurations
+## 🌐 Advanced Networking
 
-### Advanced Environment Variables
+### Ingress Path Rules
 
-```yaml
-deployments:
-  my-app:
-    containers:
-      main:
-        env:
-          # From Field
-          - name: POD_NAME
-            valueFrom:
-              fieldRef:
-                fieldPath: metadata.name
-          
-          # From Resource Field
-          - name: CPU_REQUEST
-            valueFrom:
-              resourceFieldRef:
-                containerName: main
-                resource: requests.cpu
-          
-          # From ConfigMap
-          - name: CONFIG_VAR
-            valueFrom:
-              configMapKeyRef:
-                name: app-config
-                key: config-var
-                optional: true
-```
-
-### Dynamic Volume Configuration
+<details>
+<summary>Advanced Ingress Configuration</summary>
 
 ```yaml
 deployments:
   my-app:
-    volumes:
-      - name: config
-        configMap:
-          name: app-config
-          items:
-            - key: config.json
-              path: config/config.json
-      
-      - name: certs
-        secret:
-          secretName: app-certs
-          defaultMode: 0400
-      
-      - name: cache
-        emptyDir:
-          medium: Memory
-          sizeLimit: 1Gi
+    autoCreateIngress: true
+    ingress:
+      annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /$2
+      hosts:
+        - host: api.example.com
+          paths:
+            - path: /v1(/|$)(.*)
+              pathType: Prefix
+            - path: /v2(/|$)(.*)
+              pathType: Prefix
 ```
+</details>
 
-### Advanced Probes
+### Custom Service Configuration
+
+<details>
+<summary>Advanced Service Configuration</summary>
 
 ```yaml
-deployments:
-  my-app:
-    containers:
-      main:
-        probes:
-          startupProbe:
-            httpGet:
-              path: /startup
-              port: http
-            failureThreshold: 30
-            periodSeconds: 10
-          
-          livenessProbe:
-            exec:
-              command:
-                - /bin/sh
-                - -c
-                - curl -f http://localhost:8080/health
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          
-          readinessProbe:
-            tcpSocket:
-              port: http
-            initialDelaySeconds: 5
-            periodSeconds: 10
-            successThreshold: 2
+services:
+  app-service:
+    type: LoadBalancer
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+    ports:
+      - name: http
+        port: 80
+        targetPort: http
+        protocol: TCP
+      - name: https
+        port: 443
+        targetPort: https
+        protocol: TCP
 ```
+</details>
 
-## Advanced Use Cases
+## 🔄 Advanced Use Cases
 
 ### Blue-Green Deployments
+
+<details>
+<summary>Blue-Green Configuration</summary>
 
 ```yaml
 deployments:
@@ -445,8 +366,12 @@ services:
         port: 80
         targetPort: http
 ```
+</details>
 
 ### Canary Deployments
+
+<details>
+<summary>Canary Configuration</summary>
 
 ```yaml
 deployments:
@@ -464,8 +389,12 @@ deployments:
         image: my-app
         imageTag: v2.0.0
 ```
+</details>
 
 ### Sidecar Patterns
+
+<details>
+<summary>Common Sidecar Patterns</summary>
 
 ```yaml
 deployments:
@@ -497,4 +426,40 @@ deployments:
         imageTag: "6.2"
         ports:
           redis:
-            container
+            containerPort: 6379
+    
+    volumes:
+      - name: logs
+        emptyDir: {}
+```
+</details>
+
+## 💡 Tips and Best Practices
+
+1. **Resource Management**
+   - Always specify resource requests and limits
+   - Use HPA for dynamic scaling
+   - Configure appropriate update strategies
+   - Monitor resource usage
+
+2. **Security**
+   - Enable security contexts
+   - Use non-root users
+   - Implement network policies
+   - Regular security audits
+
+3. **Networking**
+   - Use appropriate service types
+   - Configure correct ingress paths
+   - Implement proper health checks
+   - Monitor network metrics
+
+4. **High Availability**
+   - Use pod anti-affinity
+   - Configure appropriate update strategies
+   - Implement proper health checks
+   - Use PodDisruptionBudgets
+
+## 🔍 Troubleshooting
+
+For common issues and solutions, check our [FAQ](faq.md) and [Troubleshooting Guide](troubleshooting.md).

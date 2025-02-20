@@ -1,15 +1,16 @@
-# Monitoring with ks-universal
+# 📊 Monitoring with KS Universal
 
-This document provides a detailed overview of the monitoring capabilities in the ks-universal Helm chart.
+This document provides a detailed overview of the monitoring capabilities in the ks-universal chart.
 
-## Table of Contents
+## 📑 Table of Contents
 - [Overview](#overview)
+- [Quick Start](#quick-start)
 - [Configuration Options](#configuration-options)
 - [Use Cases](#use-cases)
 - [Best Practices](#best-practices)
 - [Troubleshooting](#troubleshooting)
 
-## Overview
+## 🔍 Overview
 
 The ks-universal chart provides comprehensive monitoring support through Prometheus ServiceMonitors. Key features include:
 - Automatic ServiceMonitor creation
@@ -18,32 +19,59 @@ The ks-universal chart provides comprehensive monitoring support through Prometh
 - Flexible scraping configurations
 - Integration with Prometheus Operator
 
-## Configuration Options
+## 🚀 Quick Start
+
+<details>
+<summary>Basic Monitoring Setup</summary>
+
+```yaml
+# Enable monitoring for a simple application
+deployments:
+  my-app:
+    autoCreateServiceMonitor: true
+    containers:
+      main:
+        ports:
+          http-metrics:
+            containerPort: 9090
+```
+</details>
+
+## ⚙️ Configuration Options
 
 ### Global Settings
+
+<details>
+<summary>Global ServiceMonitor Configuration</summary>
 
 ```yaml
 generic:
   serviceMonitorGeneral:
     labels:
-      prometheus: kube-prometheus
-    interval: 30s
-    scrapeTimeout: 10s
+      prometheus: kube-prometheus  # Required for Prometheus Operator discovery
+    interval: 30s                 # Default scrape interval
+    scrapeTimeout: 10s           # Default scrape timeout
 ```
+</details>
 
 ### Per-Deployment Settings
 
-Basic configuration:
+<details>
+<summary>Basic ServiceMonitor Configuration</summary>
+
 ```yaml
 deployments:
   my-app:
     autoCreateServiceMonitor: true
     serviceMonitor:
-      path: /metrics
-      interval: 15s
+      path: /metrics           # Metrics path
+      interval: 15s           # Override global interval
 ```
+</details>
 
-Advanced configuration:
+<details>
+<summary>Advanced ServiceMonitor Configuration</summary>
+
 ```yaml
 serviceMonitor:
   endpoints:
@@ -51,19 +79,25 @@ serviceMonitor:
       interval: 15s
       path: /metrics
       scrapeTimeout: 10s
+      # Relabeling configuration
       relabelings:
         - sourceLabels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
           targetLabel: component
+      # Metric relabeling
       metricRelabelings:
         - sourceLabels: [__name__]
           regex: 'go_.*'
           action: drop
 ```
+</details>
 
-## Use Cases
+## 🎯 Use Cases
 
 ### Standard Web Application
-Best for typical web applications with basic metrics:
+
+<details>
+<summary>Basic Web App Monitoring</summary>
+
 ```yaml
 deployments:
   web-app:
@@ -74,84 +108,146 @@ deployments:
           http-metrics:
             containerPort: 9090
 ```
+</details>
 
 ### High-Performance Application
-For applications requiring fine-tuned monitoring:
+
+<details>
+<summary>Advanced Monitoring Configuration</summary>
+
 ```yaml
-serviceMonitor:
-  endpoints:
-    - port: metrics
-      interval: 10s
-      path: /metrics/basic
-    - port: metrics
-      interval: 30s
-      path: /metrics/detailed
+deployments:
+  high-load-app:
+    autoCreateServiceMonitor: true
+    containers:
+      main:
+        ports:
+          basic-metrics:
+            containerPort: 9090
+          detailed-metrics:
+            containerPort: 9091
+    serviceMonitor:
+      endpoints:
+        - port: basic-metrics
+          interval: 10s
+          path: /metrics/basic
+        - port: detailed-metrics
+          interval: 30s
+          path: /metrics/detailed
 ```
+</details>
 
 ### Database Monitoring
-For monitoring databases with exporters:
+
+<details>
+<summary>Database with Exporter</summary>
+
 ```yaml
-containers:
-  db:
-    image: postgres
-    ports:
-      postgres:
-        containerPort: 5432
-  exporter:
-    image: postgres-exporter
-    ports:
-      http-metrics:
-        containerPort: 9187
-serviceMonitor:
-  endpoints:
-    - port: http-metrics
-      interval: 20s
+deployments:
+  database:
+    autoCreateServiceMonitor: true
+    containers:
+      db:
+        image: postgres
+        ports:
+          postgres:
+            containerPort: 5432
+      exporter:
+        image: postgres-exporter
+        ports:
+          http-metrics:
+            containerPort: 9187
+    serviceMonitor:
+      endpoints:
+        - port: http-metrics
+          interval: 20s
 ```
+</details>
 
-## Best Practices
+## 💡 Best Practices
 
-1. **Port Naming Conventions**
-   - Use `http-metrics` for automatic discovery
-   - Use descriptive names for additional ports
+### 1. Port Naming Conventions
+- Use `http-metrics` for automatic discovery
+- Use descriptive names for additional ports
+- Document port purposes
 
-2. **Resource Considerations**
-   - Adjust intervals based on resource usage
-   - Use longer intervals for resource-intensive metrics
-   - Consider scrapeTimeout for slow metrics
+### 2. Resource Considerations
+- Adjust intervals based on resource usage
+- Use longer intervals for resource-intensive metrics
+- Consider scrapeTimeout for slow metrics
 
-3. **Label Management**
-   - Use consistent labeling schemes
-   - Leverage relabeling for better organization
-   - Keep cardinality under control
+### 3. Label Management
+- Use consistent labeling schemes
+- Leverage relabeling for better organization
+- Keep cardinality under control
 
-4. **Multi-Container Setup**
-   - Separate concerns between containers
-   - Use dedicated exporters when needed
-   - Configure appropriate intervals per container
+### 4. Multi-Container Setup
+- Separate concerns between containers
+- Use dedicated exporters when needed
+- Configure appropriate intervals per container
 
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
-1. **ServiceMonitor Not Found**
-   - Check labels match Prometheus Operator configuration
-   - Verify serviceMonitor CRD is installed
+<details>
+<summary>ServiceMonitor Not Found</summary>
 
-2. **Metrics Not Scraped**
-   - Verify port names match ServiceMonitor configuration
-   - Check endpoint accessibility
-   - Validate metrics path
+1. **Check labels match Prometheus Operator configuration**
+```yaml
+generic:
+  serviceMonitorGeneral:
+    labels:
+      prometheus: kube-prometheus  # Must match your Prometheus Operator configuration
+```
 
-3. **High Resource Usage**
-   - Adjust scraping intervals
-   - Review metric cardinality
-   - Consider using metricRelabelings to drop unnecessary metrics
+2. **Verify ServiceMonitor CRD is installed**
+```bash
+kubectl get crd servicemonitors.monitoring.coreos.com
+```
+</details>
+
+<details>
+<summary>Metrics Not Scraped</summary>
+
+1. **Verify port names match ServiceMonitor configuration**
+2. **Check endpoint accessibility**
+```bash
+kubectl port-forward svc/your-service 9090:9090
+curl localhost:9090/metrics
+```
+3. **Validate metrics path**
+</details>
+
+<details>
+<summary>High Resource Usage</summary>
+
+1. **Adjust scraping intervals**
+```yaml
+serviceMonitor:
+  endpoints:
+    - port: metrics
+      interval: 30s  # Increase for less critical metrics
+```
+
+2. **Use metric filtering**
+```yaml
+metricRelabelings:
+  - sourceLabels: [__name__]
+    regex: 'go_gc_.*'
+    action: keep  # Only keep relevant metrics
+```
+</details>
 
 ### Debugging Steps
+
+<details>
+<summary>Monitoring Debug Commands</summary>
 
 1. Check ServiceMonitor creation:
 ```bash
 kubectl get servicemonitor -n your-namespace
+kubectl describe servicemonitor your-servicemonitor
 ```
 
 2. Verify endpoint discovery:
@@ -159,55 +255,24 @@ kubectl get servicemonitor -n your-namespace
 kubectl get endpoints -n your-namespace
 ```
 
-3. Test metrics endpoint:
+3. Check Prometheus targets:
 ```bash
-kubectl port-forward svc/your-service 9090:9090
-curl localhost:9090/metrics
+kubectl port-forward svc/prometheus-k8s 9090:9090 -n monitoring
+# Open http://localhost:9090/targets in your browser
 ```
+</details>
 
-### Performance Optimization
-
-1. **Interval Tuning**
-```yaml
-serviceMonitor:
-  endpoints:
-    - port: metrics
-      interval: 30s  # Increase for less critical metrics
-    - port: metrics-detailed
-      interval: 60s  # Longer interval for resource-intensive metrics
-```
-
-2. **Metric Filtering**
-```yaml
-metricRelabelings:
-  - sourceLabels: [__name__]
-    regex: 'go_gc_.*'
-    action: keep  # Only keep relevant metrics
-```
-
-3. **Resource Limits**
-```yaml
-containers:
-  exporter:
-    resources:
-      requests:
-        cpu: 100m
-        memory: 128Mi
-      limits:
-        cpu: 200m
-        memory: 256Mi
-```
-
-## Integration Examples
+## 📈 Integration Examples
 
 ### Grafana Dashboard Integration
+
+<details>
+<summary>Grafana Integration</summary>
+
 ```yaml
 podAnnotations:
   grafana-dashboard: "true"
-```
 
-### Alert Manager Integration
-```yaml
 serviceMonitor:
   endpoints:
     - port: metrics
@@ -217,5 +282,57 @@ serviceMonitor:
           regex: 'error_.*'
           action: keep
 ```
+</details>
 
-These configurations and examples should help you effectively monitor your applications using the ks-universal chart. For specific use cases or additional configuration options, refer to the main documentation or create an issue on GitHub.
+### Alert Manager Integration
+
+<details>
+<summary>AlertManager Rules</summary>
+
+```yaml
+# In your Prometheus Rules configuration
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: my-app-alerts
+spec:
+  groups:
+    - name: my-app
+      rules:
+        - alert: HighErrorRate
+          expr: |
+            sum(rate(http_requests_total{status=~"5.."}[5m])) 
+            / 
+            sum(rate(http_requests_total[5m])) > 0.1
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: High error rate detected
+```
+</details>
+
+### Custom Metrics Example
+
+<details>
+<summary>Application with Custom Metrics</summary>
+
+```yaml
+deployments:
+  custom-app:
+    autoCreateServiceMonitor: true
+    containers:
+      main:
+        ports:
+          http-metrics:
+            containerPort: 9090
+    serviceMonitor:
+      endpoints:
+        - port: http-metrics
+          interval: 15s
+          metricRelabelings:
+            - sourceLabels: [__name__]
+              regex: '^myapp_.*'
+              action: keep
+```
+</details>

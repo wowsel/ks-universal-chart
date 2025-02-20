@@ -1,20 +1,34 @@
-# Auto-creation Features
+# 🤖 Auto-creation Features
 
 This guide explains the automatic resource creation capabilities of the ks-universal chart.
 
-## Available Auto-creation Features
+## 📑 Table of Contents
+- [Available Features](#available-features)
+- [Service Auto-creation](#service-auto-creation)
+- [Ingress Auto-creation](#ingress-auto-creation)
+- [Certificate Auto-creation](#certificate-auto-creation)
+- [ServiceMonitor Auto-creation](#servicemonitor-auto-creation)
+- [PDB Auto-creation](#pdb-auto-creation)
+- [ServiceAccount Auto-creation](#serviceaccount-auto-creation)
+- [Soft Anti-Affinity Auto-creation](#soft-anti-affinity-auto-creation)
+- [Best Practices](#best-practices)
 
-- `autoCreateService`
-- `autoCreateIngress`
-- `autoCreateCertificate`
-- `autoCreateServiceMonitor`
-- `autoCreatePdb`
-- `autoCreateServiceAccount`
-- `autoCreateSoftAntiAffinity`
+## ✨ Available Auto-creation Features
 
-## Service Auto-creation
+| Feature | Flag | Description |
+|---------|------|-------------|
+| Service | `autoCreateService` | Creates Kubernetes Service |
+| Ingress | `autoCreateIngress` | Creates Ingress resource |
+| Certificate | `autoCreateCertificate` | Creates cert-manager Certificate |
+| ServiceMonitor | `autoCreateServiceMonitor` | Creates Prometheus ServiceMonitor |
+| PDB | `autoCreatePdb` | Creates PodDisruptionBudget |
+| ServiceAccount | `autoCreateServiceAccount` | Creates ServiceAccount |
+| SoftAntiAffinity | `autoCreateSoftAntiAffinity` | Creates pod anti-affinity rules |
 
-The `autoCreateService` feature automatically creates a Kubernetes Service based on container port definitions.
+## 🔌 Service Auto-creation
+
+<details>
+<summary>Basic Service Configuration</summary>
 
 ```yaml
 deployments:
@@ -36,10 +50,35 @@ deployments:
 - Supports multiple ports
 - Default service type: ClusterIP
 - Custom service type via `serviceType` field
+</details>
 
-## Ingress Auto-creation
+<details>
+<summary>Advanced Service Configuration</summary>
 
-The `autoCreateIngress` feature creates an Ingress resource with SSL support.
+```yaml
+deployments:
+  my-app:
+    autoCreateService: true
+    serviceType: LoadBalancer    # Override service type
+    containers:
+      main:
+        ports:
+          http:
+            containerPort: 8080
+            servicePort: 80
+            protocol: TCP      # Optional, defaults to TCP
+      metrics:
+        ports:
+          prometheus:
+            containerPort: 9090
+            servicePort: 9090
+```
+</details>
+
+## 🌐 Ingress Auto-creation
+
+<details>
+<summary>Basic Ingress Configuration</summary>
 
 ```yaml
 deployments:
@@ -57,8 +96,11 @@ deployments:
             - path: /
               pathType: Prefix
 ```
+</details>
 
-### Global Ingress Configuration
+<details>
+<summary>Global Ingress Configuration</summary>
+
 ```yaml
 generic:
   ingressesGeneral:
@@ -67,10 +109,12 @@ generic:
     annotations:
       nginx.ingress.kubernetes.io/proxy-body-size: "10m"
 ```
+</details>
 
-## Certificate Auto-creation
+## 🔒 Certificate Auto-creation
 
-The `autoCreateCertificate` feature integrates with cert-manager for SSL/TLS certificates.
+<details>
+<summary>Certificate Configuration</summary>
 
 ```yaml
 deployments:
@@ -81,9 +125,16 @@ deployments:
       clusterIssuer: letsencrypt-prod  # Optional, defaults to "letsencrypt"
 ```
 
-## ServiceMonitor Auto-creation
+### Requirements
+- cert-manager installed in cluster
+- Configured ClusterIssuer/Issuer
+- Valid domain configuration
+</details>
 
-The `autoCreateServiceMonitor` feature creates Prometheus ServiceMonitor resources.
+## 📊 ServiceMonitor Auto-creation
+
+<details>
+<summary>Basic ServiceMonitor Configuration</summary>
 
 ```yaml
 deployments:
@@ -100,10 +151,37 @@ deployments:
 ### Port Selection Logic
 1. Looks for port named "http-metrics"
 2. Uses first available port if http-metrics not found
+</details>
 
-## PDB Auto-creation
+<details>
+<summary>Advanced ServiceMonitor Configuration</summary>
 
-The `autoCreatePdb` feature creates PodDisruptionBudget for high availability.
+```yaml
+deployments:
+  my-app:
+    autoCreateServiceMonitor: true
+    serviceMonitor:
+      endpoints:
+        - port: metrics
+          interval: 15s
+          path: /metrics
+          scrapeTimeout: 10s
+          # Relabeling configuration
+          relabelings:
+            - sourceLabels: [__meta_kubernetes_pod_label_app_kubernetes_io_component]
+              targetLabel: component
+          # Metric relabeling
+          metricRelabelings:
+            - sourceLabels: [__name__]
+              regex: 'go_.*'
+              action: drop
+```
+</details>
+
+## 🛡️ PDB Auto-creation
+
+<details>
+<summary>PDB Configuration</summary>
 
 ```yaml
 deployments:
@@ -115,9 +193,16 @@ deployments:
       maxUnavailable: 1
 ```
 
-## ServiceAccount Auto-creation
+### Notes
+- Use with multiple replicas
+- Choose either minAvailable or maxUnavailable
+- Consider maintenance windows
+</details>
 
-The `autoCreateServiceAccount` feature creates a dedicated ServiceAccount.
+## 👤 ServiceAccount Auto-creation
+
+<details>
+<summary>ServiceAccount Configuration</summary>
 
 ```yaml
 deployments:
@@ -127,10 +212,12 @@ deployments:
       annotations:
         eks.amazonaws.com/role-arn: "arn:aws:iam::123456789012:role/my-role"
 ```
+</details>
 
-## Soft Anti-Affinity
+## 🎯 Soft Anti-Affinity Auto-creation
 
-The `autoCreateSoftAntiAffinity` feature adds pod anti-affinity rules.
+<details>
+<summary>Soft Anti-Affinity Configuration</summary>
 
 ```yaml
 deployments:
@@ -138,24 +225,98 @@ deployments:
     autoCreateSoftAntiAffinity: true  # Spreads pods across nodes
 ```
 
-## Tips and Best Practices
+### Generated Configuration
+```yaml
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+    - weight: 100
+      podAffinityTerm:
+        labelSelector:
+          matchLabels:
+            app.kubernetes.io/component: my-app
+        topologyKey: kubernetes.io/hostname
+```
+</details>
 
-1. **Service and Ingress**
-   - Always enable `autoCreateService` with `autoCreateIngress`
-   - Use `servicePort` when needed
-   - Configure global ingress settings
+## 💡 Tips and Best Practices
 
-2. **Certificates**
-   - Ensure cert-manager is installed
-   - Configure default ClusterIssuer
-   - Use with `autoCreateIngress`
+### Service and Ingress
+- Always enable `autoCreateService` with `autoCreateIngress`
+- Use `servicePort` when needed
+- Configure global ingress settings
 
-3. **Monitoring**
-   - Use standard port name "http-metrics"
-   - Configure global ServiceMonitor settings
-   - Consider resource impact
+### Certificates
+- Ensure cert-manager is installed
+- Configure default ClusterIssuer
+- Use with `autoCreateIngress`
 
-4. **High Availability**
-   - Use PDB with multiple replicas
-   - Configure appropriate disruption budget
-   - Enable soft anti-affinity
+### Monitoring
+- Use standard port name "http-metrics"
+- Configure global ServiceMonitor settings
+- Consider resource impact
+
+### High Availability
+- Use PDB with multiple replicas
+- Configure appropriate disruption budget
+- Enable soft anti-affinity
+
+## 🔍 Troubleshooting
+
+<details>
+<summary>Common Issues</summary>
+
+1. **Service Not Created**
+   - Check if ports are defined
+   - Verify container port configuration
+   - Check logs for validation errors
+
+2. **Ingress Issues**
+   - Verify autoCreateService is enabled
+   - Check domain configuration
+   - Validate ingress controller setup
+
+3. **Certificate Problems**
+   - Verify cert-manager installation
+   - Check ClusterIssuer status
+   - Review certificate logs
+
+4. **ServiceMonitor Not Working**
+   - Verify Prometheus operator installation
+   - Check metric endpoint accessibility
+   - Review port configurations
+</details>
+
+## 📝 Real-World Examples
+
+<details>
+<summary>Complete Application Stack</summary>
+
+```yaml
+deployments:
+  backend:
+    autoCreateService: true
+    autoCreateIngress: true
+    autoCreateCertificate: true
+    autoCreateServiceMonitor: true
+    autoCreatePdb: true
+    autoCreateSoftAntiAffinity: true
+    containers:
+      main:
+        image: backend
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+          metrics:
+            containerPort: 9090
+    ingress:
+      hosts:
+        - host: api.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+    pdbConfig:
+      minAvailable: 2
+```
+</details>
