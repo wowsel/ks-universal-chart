@@ -1,0 +1,19 @@
+suite: Configuration tests
+templates:
+  - configs.yaml
+
+tests:
+  - it: should properly handle config creation
+    values:
+      - ./values/configs.yaml
+    asserts:
+      - template: configs.yaml
+        equal:
+          path: metadata.name
+          value: app-config
+        documentIndex: 0
+      - template: configs.yaml
+        equal:
+          path: kind
+          value: Secret
+        documentIndex: 1 

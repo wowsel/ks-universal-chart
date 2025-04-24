@@ -1,0 +1,114 @@
+{{/* DexAuthenticator template */}}
+{{- define "ks-universal.globalDexAuthenticator" -}}
+{{- $root := . -}}
+{{- $generic := $root.Values.generic | default dict -}}
+{{- $dexGeneral := $generic.dexAuthenticatorGeneral | default dict -}}
+{{- $globalDomain := "" -}}
+{{- if and $generic.ingressesGeneral $generic.ingressesGeneral.domain -}}
+  {{- $globalDomain = $generic.ingressesGeneral.domain -}}
+{{- end -}}
+
+apiVersion: deckhouse.io/v1
+kind: DexAuthenticator
+metadata:
+  name: global-authenticator
+  namespace: {{ $dexGeneral.namespace | default $root.Release.Namespace }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" "global-authenticator") | nindent 4 }}
+spec:
+  applicationDomain: {{ $dexGeneral.applicationDomain | required "global DexAuthenticator requires applicationDomain" }}
+  applicationIngressClassName: {{ $dexGeneral.applicationIngressClassName | required "global DexAuthenticator requires applicationIngressClassName" | quote }}
+  {{- if $dexGeneral.applicationIngressCertificateSecretName }}
+  applicationIngressCertificateSecretName: {{ $dexGeneral.applicationIngressCertificateSecretName | quote }}
+  {{- end }}
+  {{- if $dexGeneral.sendAuthorizationHeader }}
+  sendAuthorizationHeader: {{ $dexGeneral.sendAuthorizationHeader }}
+  {{- end }}
+  {{- if $dexGeneral.keepUsersLoggedInFor }}
+  keepUsersLoggedInFor: {{ $dexGeneral.keepUsersLoggedInFor | quote }}
+  {{- end }}
+  {{- if $dexGeneral.allowedGroups }}
+  allowedGroups:
+    {{- toYaml $dexGeneral.allowedGroups | nindent 4 }}
+  {{- end }}
+  {{- if $dexGeneral.whitelistSourceRanges }}
+  whitelistSourceRanges:
+    {{- toYaml $dexGeneral.whitelistSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if $dexGeneral.additionalApplications }}
+  additionalApplications:
+    {{- range $app := $dexGeneral.additionalApplications }}
+    - domain: {{ $app.domain }}
+      {{- if $app.ingressSecretName }}
+      ingressSecretName: {{ $app.ingressSecretName }}
+      {{- end }}
+      {{- if $app.ingressClassName }}
+      ingressClassName: {{ $app.ingressClassName }}
+      {{- end }}
+      {{- if $app.signOutURL }}
+      signOutURL: {{ $app.signOutURL }}
+      {{- end }}
+      {{- if $app.whitelistSourceRanges }}
+      whitelistSourceRanges:
+        {{- toYaml $app.whitelistSourceRanges | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- if $dexGeneral.nodeSelector }}
+  nodeSelector:
+    {{- toYaml $dexGeneral.nodeSelector | nindent 4 }}
+  {{- else if and $generic.deploymentsGeneral $generic.deploymentsGeneral.nodeSelector }}
+  nodeSelector:
+    {{- toYaml $generic.deploymentsGeneral.nodeSelector | nindent 4 }}
+  {{- end }}
+  {{- if $dexGeneral.tolerations }}
+  tolerations:
+    {{- toYaml $dexGeneral.tolerations | nindent 4 }}
+  {{- else if and $generic.deploymentsGeneral $generic.deploymentsGeneral.tolerations }}
+  tolerations:
+    {{- toYaml $generic.deploymentsGeneral.tolerations | nindent 4 }}
+  {{- end }}
+{{- end }}
+
+{{/* Render Global DexAuthenticator if enabled */}}
+{{- if and .Values.generic .Values.generic.dexAuthenticatorGeneral .Values.generic.dexAuthenticatorGeneral.enabled }}
+---
+{{- include "ks-universal.globalDexAuthenticator" . }}
+
+{{/* Create certificate for global DexAuthenticator if autoCreateCertificate is enabled */}}
+{{- $generic := .Values.generic }}
+{{- $dexGeneral := $generic.dexAuthenticatorGeneral }}
+{{- if $dexGeneral.autoCreateCertificate }}
+{{- $certificateConfig := dict "domains" (list $dexGeneral.applicationDomain) }}
+{{- if $dexGeneral.certificate }}
+  {{- $certificateConfig = $dexGeneral.certificate }}
+  {{- if not (hasKey $certificateConfig "domains") }}
+    {{- $_ := set $certificateConfig "domains" (list $dexGeneral.applicationDomain) }}
+  {{- end }}
+{{- end }}
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: global-authenticator
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" .Chart "Release" .Release "name" "global-authenticator") | nindent 4 }}
+spec:
+  secretName: global-authenticator-tls
+  issuerRef:
+    {{- if $certificateConfig.clusterIssuer }}
+    kind: ClusterIssuer
+    name: {{ $certificateConfig.clusterIssuer }}
+    {{- else if $certificateConfig.issuer }}
+    kind: Issuer
+    name: {{ $certificateConfig.issuer }}
+    {{- else }}
+    kind: ClusterIssuer
+    name: letsencrypt
+    {{- end }}
+  dnsNames:
+  {{- range $certificateConfig.domains }}
+    - {{ . }}
+  {{- end }}
+{{- end }}
+{{- end }} 

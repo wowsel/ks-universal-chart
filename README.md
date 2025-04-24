@@ -85,6 +85,7 @@ generic:
   extraImagePullSecrets: []  # Global image pull secrets
   ingressesGeneral: {}       # Global ingress configurations
   serviceMonitorGeneral: {}  # Global ServiceMonitor settings
+  dexAuthenticatorGeneral: {}  # Global DexAuthenticator settings
 
 # Deployments
 deployments:
@@ -214,9 +215,12 @@ The chart can automatically create associated resources based on your configurat
 | Service | Creates Service based on container ports | `autoCreateService: true` |
 | Ingress | Creates Ingress with optional SSL | `autoCreateIngress: true` |
 | Certificate | Manages SSL certificates via cert-manager | `autoCreateCertificate: true` |
+| DexAuthenticator | Global authentication via Dex (Deckhouse only) | `generic.dexAuthenticatorGeneral.enabled: true` and `ingress.dexAuthenticator.enabled: true` |
 | ServiceMonitor | Creates Prometheus ServiceMonitor | `autoCreateServiceMonitor: true` |
 | PDB | Creates PodDisruptionBudget | `autoCreatePdb: true` |
 | ServiceAccount | Creates dedicated ServiceAccount | `autoCreateServiceAccount: true` |
+
+> **Note:** The DexAuthenticator feature works **ONLY** with [Deckhouse Kubernetes Platform](https://deckhouse.ru/) clusters, as it uses the `deckhouse.io/v1` API. For more information, see the [DexAuthenticator documentation](https://deckhouse.ru/products/kubernetes-platform/documentation/v1/modules/user-authn/cr.html#dexauthenticator).
 
 ### 🔐 Secret Management
 
