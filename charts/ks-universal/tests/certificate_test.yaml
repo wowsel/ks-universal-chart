@@ -1,0 +1,35 @@
+suite: Certificate tests
+templates:
+  - certificate.yaml
+  - deployment.yaml
+
+tests:
+  - it: should properly handle certificate creation
+    values:
+      - ./values/certificate-config.yaml
+    asserts:
+      - template: deployment.yaml
+        documentIndex: 2  # Certificate is in the deployment.yaml as a separate document
+        equal:
+          path: kind
+          value: Certificate
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.secretName
+          value: app-with-cert-tls
+      - template: deployment.yaml
+        documentIndex: 2
+        contains:
+          path: spec.dnsNames
+          content: secure-app.example.com
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.issuerRef.kind
+          value: ClusterIssuer
+      - template: deployment.yaml
+        documentIndex: 2
+        equal:
+          path: spec.issuerRef.name
+          value: letsencrypt-prod 

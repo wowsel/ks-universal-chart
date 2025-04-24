@@ -7,6 +7,7 @@ This guide explains the automatic resource creation capabilities of the ks-unive
 - [Service Auto-creation](#service-auto-creation)
 - [Ingress Auto-creation](#ingress-auto-creation)
 - [Certificate Auto-creation](#certificate-auto-creation)
+- [DexAuthenticator Integration](#dexauthenticator-integration)
 - [ServiceMonitor Auto-creation](#servicemonitor-auto-creation)
 - [PDB Auto-creation](#pdb-auto-creation)
 - [ServiceAccount Auto-creation](#serviceaccount-auto-creation)
@@ -20,6 +21,7 @@ This guide explains the automatic resource creation capabilities of the ks-unive
 | Service | `autoCreateService` | Creates Kubernetes Service |
 | Ingress | `autoCreateIngress` | Creates Ingress resource |
 | Certificate | `autoCreateCertificate` | Creates cert-manager Certificate |
+| DexAuthenticator | `generic.dexAuthenticatorGeneral.enabled` | Creates Deckhouse DexAuthenticator for auth |
 | ServiceMonitor | `autoCreateServiceMonitor` | Creates Prometheus ServiceMonitor |
 | PDB | `autoCreatePdb` | Creates PodDisruptionBudget |
 | ServiceAccount | `autoCreateServiceAccount` | Creates ServiceAccount |
@@ -131,94 +133,114 @@ deployments:
 - Valid domain configuration
 </details>
 
-## 🔐 DexAuthenticator Auto-creation
+## 🔐 DexAuthenticator Integration
+
+> **IMPORTANT**: DexAuthenticator integration works **ONLY** with Deckhouse Kubernetes Platform clusters, as it uses the `deckhouse.io/v1` API. For more information about the DexAuthenticator resource, refer to the [official Deckhouse documentation](https://deckhouse.ru/products/kubernetes-platform/documentation/v1/modules/user-authn/cr.html#dexauthenticator).
 
 <details>
-<summary>DexAuthenticator Configuration</summary>
+<summary>Global DexAuthenticator Configuration</summary>
 
 ```yaml
-# DexAuthenticator in standalone ingress
-ingresses:
-  ingress-with-dex:
-    hosts:
-      - host: app.example.com
-        paths:
-          - path: /
-            pathType: Prefix
-            service: app-service
-    dexAuthenticator:
-      enabled: true                                  # Enable DexAuthenticator for this ingress
-      sendAuthorizationHeader: false                 # Optional: Send Authorization header to the application
-      applicationIngressCertificateSecretName: tls   # Secret with SSL certificate
-      applicationIngressClassName: nginx             # Ingress class name
-      keepUsersLoggedInFor: "720h"                   # Optional: Session duration
-      allowedGroups:                                 # Optional: Restrict access to specific groups
-        - everyone
-      whitelistSourceRanges:                         # Optional: Restrict access to specific IP ranges
-        - 1.1.1.1/32
+# Global DexAuthenticator configuration in generic section
+generic:
+  dexAuthenticatorGeneral:
+    enabled: true                                   # Enable global DexAuthenticator
+    # Required fields
+    applicationDomain: auth.example.com             # Domain for DexAuthenticator
+    applicationIngressClassName: nginx              # Ingress class name
+    
+    # Optional fields
+    namespace: auth-system                          # Namespace for DexAuthenticator (default: release namespace)
+    sendAuthorizationHeader: true                   # Send Authorization header to applications
+    applicationIngressCertificateSecretName: "tls"  # SSL certificate secret
+    keepUsersLoggedInFor: "720h"                    # Session duration (30 days)
+    
+    # Security settings
+    allowedGroups:                                  # Allow only users in these groups
+      - everyone
+      - admins
+    whitelistSourceRanges:                          # IP whitelisting
+      - 10.0.0.0/8
+      - 192.168.0.0/16
+    
+    # Node placement settings
+    nodeSelector:                                   # NodeSelector for DexAuthenticator pods
+      kubernetes.io/os: linux
+    tolerations:                                    # Tolerations for DexAuthenticator pods
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+    
+    # Automatic certificate creation
+    autoCreateCertificate: true                     # Auto-create SSL certificate
+    certificate:                                    # Certificate configuration
+      clusterIssuer: letsencrypt-prod
+    
+    # Additional applications
+    additionalApplications:                         # Additional applications to protect
+      - domain: app1.example.com
+        ingressSecretName: app1-tls
+        ingressClassName: nginx
+        signOutURL: "/logout"
 ```
 
 ```yaml
-# DexAuthenticator in deployment with auto-created ingress
+# Using DexAuthenticator in an ingress
+ingresses:
+  secure-app:
+    hosts:
+      - host: secure.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            service: secure-app
+            portName: http
+    dexAuthenticator:
+      enabled: true  # Will use the global DexAuthenticator
+```
+
+```yaml
+# Using DexAuthenticator in deployment with auto-created ingress
 deployments:
-  app-with-dex:
+  dashboard:
+    autoCreateService: true
     autoCreateIngress: true
+    containers:
+      main:
+        image: nginx
+        imageTag: latest
+        ports:
+          http:
+            containerPort: 80
     ingress:
       hosts:
-        - host: deploy.example.com
+        - host: dashboard.example.com
           paths:
             - path: /
               pathType: Prefix
       dexAuthenticator:
-        enabled: true
-        sendAuthorizationHeader: true
-        applicationIngressCertificateSecretName: ingress-tls
-        keepUsersLoggedInFor: "48h"
-        allowedGroups:
-          - developers
-```
-
-```yaml
-# Multiple domains with a single DexAuthenticator
-deployments:
-  multi-domain-app:
-    autoCreateIngress: true
-    ingress:
-      hosts:
-        - host: first.example.com
-          paths:
-            - path: /
-        - host: second.example.com
-          paths:
-            - path: /
-      dexAuthenticator:
-        enabled: true
-        applicationIngressCertificateSecretName: ingress-tls
-        additionalApplications:
-          - domain: additional-app.example.com
-            ingressSecretName: ingress-tls
-            ingressClassName: nginx
-            signOutURL: "/logout"
+        enabled: true  # Will use the global DexAuthenticator
 ```
 
 ### Features
-- Automatic creation of DexAuthenticator resources for Ingress hosts
-- Support for multiple host configurations
-- Integration with global domain settings
-- Standalone or auto-created ingress support
-- IP whitelisting support
-- Group restrictions support
+- Single global DexAuthenticator instance for the entire chart
+- Automatic integration with ingress resources
+- Support for multiple protected applications
+- IP whitelisting and group restrictions
+- Node placement control via nodeSelector and tolerations
+- Automatic certificate creation
 - **Automatic addition of required annotations to Ingress resources:**
   ```yaml
   annotations:
     nginx.ingress.kubernetes.io/auth-signin: https://$host/dex-authenticator/sign_in
     nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
-    nginx.ingress.kubernetes.io/auth-url: https://<dex-name>-dex-authenticator.<namespace>.svc.cluster.local/dex-authenticator/auth
+    nginx.ingress.kubernetes.io/auth-url: https://global-authenticator-dex-authenticator.<namespace>.svc.cluster.local/dex-authenticator/auth
   ```
 
 ### Requirements
-- Deckhouse Kubernetes Platform with user-authn module enabled
+- **Deckhouse Kubernetes Platform** with user-authn module enabled
 - Valid Ingress configuration with host(s)
+- The DexAuthenticator custom resource definition (from Deckhouse)
 </details>
 
 ## 📊 ServiceMonitor Auto-creation

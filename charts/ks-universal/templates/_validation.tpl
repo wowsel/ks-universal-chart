@@ -377,13 +377,14 @@ DexAuthenticator validation
 {{- define "ks-universal.validateDexAuthenticator" -}}
 {{- $name := .name -}}
 {{- $config := .config -}}
+{{- $context := .context | default "standalone" -}}
 
 {{- if not $config -}}
 {{- fail (printf "DexAuthenticator %s: configuration must not be empty" $name) -}}
 {{- end -}}
 
 {{/* Check for applicationDomain if it's a standalone DexAuthenticator */}}
-{{- if and (eq .context "standalone") (not $config.applicationDomain) -}}
+{{- if and (eq $context "standalone") (not $config.applicationDomain) -}}
 {{- fail (printf "DexAuthenticator %s: applicationDomain is required" $name) -}}
 {{- end -}}
 
@@ -421,6 +422,110 @@ DexAuthenticator validation
 {{- if not (kindIs "slice" $app.whitelistSourceRanges) -}}
 {{- fail (printf "DexAuthenticator %s: whitelistSourceRanges must be a list in additionalApplication %s" $name $app.domain) -}}
 {{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate nodeSelector if provided */}}
+{{- if $config.nodeSelector -}}
+{{- if not (kindIs "map" $config.nodeSelector) -}}
+{{- fail (printf "DexAuthenticator %s: nodeSelector must be a map" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate tolerations if provided */}}
+{{- if $config.tolerations -}}
+{{- if not (kindIs "slice" $config.tolerations) -}}
+{{- fail (printf "DexAuthenticator %s: tolerations must be a list" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate certificate if autoCreateCertificate is enabled */}}
+{{- if $config.autoCreateCertificate -}}
+{{- if $config.certificate -}}
+{{- if not (kindIs "map" $config.certificate) -}}
+{{- fail (printf "DexAuthenticator %s: certificate must be a map" $name) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Global DexAuthenticator validation
+*/}}
+{{- define "ks-universal.validateGlobalDexAuthenticator" -}}
+{{- $config := . -}}
+
+{{- if not $config -}}
+{{- fail "Global DexAuthenticator: configuration must not be empty" -}}
+{{- end -}}
+
+{{/* Check required fields */}}
+{{- if not $config.applicationDomain -}}
+{{- fail "Global DexAuthenticator: applicationDomain is required" -}}
+{{- end -}}
+
+{{- if not $config.applicationIngressClassName -}}
+{{- fail "Global DexAuthenticator: applicationIngressClassName is required" -}}
+{{- end -}}
+
+{{/* Validate keepUsersLoggedInFor format if provided */}}
+{{- if $config.keepUsersLoggedInFor -}}
+{{- if not (regexMatch "^([0-9]+h([0-9]+m)?|[0-9]+m)$" $config.keepUsersLoggedInFor) -}}
+{{- fail "Global DexAuthenticator: keepUsersLoggedInFor must be in the format: 30m, 1h, 2h30m, 24h" -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate allowedGroups if provided */}}
+{{- if $config.allowedGroups -}}
+{{- if not (kindIs "slice" $config.allowedGroups) -}}
+{{- fail "Global DexAuthenticator: allowedGroups must be a list" -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate whitelistSourceRanges if provided */}}
+{{- if $config.whitelistSourceRanges -}}
+{{- if not (kindIs "slice" $config.whitelistSourceRanges) -}}
+{{- fail "Global DexAuthenticator: whitelistSourceRanges must be a list" -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate additionalApplications if provided */}}
+{{- if $config.additionalApplications -}}
+{{- if not (kindIs "slice" $config.additionalApplications) -}}
+{{- fail "Global DexAuthenticator: additionalApplications must be a list" -}}
+{{- end -}}
+{{- range $index, $app := $config.additionalApplications -}}
+{{- if not $app.domain -}}
+{{- fail "Global DexAuthenticator: domain is required for each additionalApplication" -}}
+{{- end -}}
+{{- if $app.whitelistSourceRanges -}}
+{{- if not (kindIs "slice" $app.whitelistSourceRanges) -}}
+{{- fail (printf "Global DexAuthenticator: whitelistSourceRanges must be a list in additionalApplication %s" $app.domain) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate nodeSelector if provided */}}
+{{- if $config.nodeSelector -}}
+{{- if not (kindIs "map" $config.nodeSelector) -}}
+{{- fail "Global DexAuthenticator: nodeSelector must be a map" -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate tolerations if provided */}}
+{{- if $config.tolerations -}}
+{{- if not (kindIs "slice" $config.tolerations) -}}
+{{- fail "Global DexAuthenticator: tolerations must be a list" -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate certificate if autoCreateCertificate is enabled */}}
+{{- if $config.autoCreateCertificate -}}
+{{- if $config.certificate -}}
+{{- if not (kindIs "map" $config.certificate) -}}
+{{- fail "Global DexAuthenticator: certificate must be a map" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -675,21 +780,15 @@ Main validation entrypoint
 {{/* Context validation */}}
 {{- include "ks-universal.validateContext" $root -}}
 
+{{/* Global DexAuthenticator validation if enabled */}}
+{{- if and $root.Values.generic $root.Values.generic.dexAuthenticatorGeneral $root.Values.generic.dexAuthenticatorGeneral.enabled -}}
+{{- include "ks-universal.validateGlobalDexAuthenticator" $root.Values.generic.dexAuthenticatorGeneral -}}
+{{- end -}}
+
 {{/* Deployments validation */}}
 {{- if $root.Values.deployments -}}
 {{- range $deploymentName, $deploymentConfig := $root.Values.deployments -}}
 {{- include "ks-universal.validateDeployment" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $root) -}}
-{{- /* Validate DexAuthenticator in ingress if present */}}
-{{- if and $deploymentConfig.autoCreateIngress $deploymentConfig.ingress $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
-{{- include "ks-universal.validateDexAuthenticator" (dict "name" $deploymentName "config" $deploymentConfig.ingress.dexAuthenticator "context" "ingress") }}
-{{- end }}
-{{- end -}}
-{{- end -}}
-
-{{/* Standalone DexAuthenticators validation */}}
-{{- if $root.Values.dexAuthenticators -}}
-{{- range $dexName, $dexConfig := $root.Values.dexAuthenticators -}}
-{{- include "ks-universal.validateDexAuthenticator" (dict "name" $dexName "config" $dexConfig "context" "standalone") -}}
 {{- end -}}
 {{- end -}}
 

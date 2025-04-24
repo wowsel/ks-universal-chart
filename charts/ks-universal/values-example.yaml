@@ -53,6 +53,35 @@ generic:
   extraImagePullSecrets:
     - name: registry-secret  # Name of the Kubernetes secret containing registry credentials
 
+  # Global DexAuthenticator configuration
+  dexAuthenticatorGeneral:
+    enabled: true                                   # Enable global DexAuthenticator
+    applicationDomain: auth.example.com             # Domain for DexAuthenticator
+    applicationIngressClassName: nginx              # Ingress class name
+    namespace: auth-system                          # Optional: namespace for DexAuthenticator (default: release namespace)
+    sendAuthorizationHeader: true                   # Optional: Send Authorization header to applications
+    applicationIngressCertificateSecretName: "tls"  # Optional: SSL certificate secret
+    keepUsersLoggedInFor: "720h"                    # Optional: Session duration
+    allowedGroups:                                  # Optional: Allow only users in these groups
+      - everyone
+      - admins
+    whitelistSourceRanges:                          # Optional: IP whitelisting
+      - 10.0.0.0/8
+    additionalApplications:                         # Optional: Additional applications
+      - domain: extra-app.example.com
+        ingressSecretName: ingress-tls
+        ingressClassName: nginx
+        signOutURL: "/logout"
+    nodeSelector:                                   # Optional: NodeSelector for DexAuthenticator pods
+      kubernetes.io/os: linux
+    tolerations:                                    # Optional: Tolerations for DexAuthenticator pods
+      - key: "node-role.kubernetes.io/control-plane"
+        operator: "Exists"
+        effect: "NoSchedule"
+    autoCreateCertificate: true                     # Optional: Auto-create SSL certificate
+    certificate:                                    # Optional: Certificate configuration
+      clusterIssuer: letsencrypt-prod
+
 # Configuration and Secret management
 configs:
   # Application configuration as ConfigMap
@@ -270,38 +299,15 @@ ingresses:
             service: main2
             portName: http
 
-  # Example with DexAuthenticator for authentication
-  app-with-auth:
-    hosts:
-      - host: secure-app.example.com
-        paths:
-          - path: /
-            pathType: Prefix
-            service: secure-app
-            portName: http
-    # DexAuthenticator configuration
-    dexAuthenticator:
-      enabled: true
-      sendAuthorizationHeader: false
-      applicationIngressCertificateSecretName: "ingress-tls"
-      applicationIngressClassName: "nginx"
-      keepUsersLoggedInFor: "720h"
-      allowedGroups:
-        - developers
-        - operators
-      whitelistSourceRanges:
-        - 10.0.0.0/8
-
-# Standalone DexAuthenticator configuration
-dexAuthenticators:
-  standalone-auth:
-    applicationDomain: custom-auth.example.com
-    sendAuthorizationHeader: true
-    applicationIngressCertificateSecretName: "ingress-tls"
-    applicationIngressClassName: "nginx"
-    keepUsersLoggedInFor: "48h"
-    additionalApplications:
-      - domain: extra-app.example.com
-        ingressSecretName: ingress-tls
-        ingressClassName: nginx
-        signOutURL: "/logout"
+# Example with DexAuthenticator for authentication
+app-with-auth:
+  hosts:
+    - host: secure-app.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: secure-app
+          portName: http
+# DexAuthenticator enablement - will use the global DexAuthenticator
+dexAuthenticator:
+  enabled: true

@@ -1,0 +1,18 @@
+suite: Service tests
+templates:
+  - service.yaml
+  - servicemonitor.yaml
+
+tests:
+  - it: should handle service with multiple ports
+    values:
+      - ./values/service-multi-port.yaml
+    asserts:
+      - template: service.yaml
+        equal:
+          path: kind
+          value: Service
+      - template: service.yaml
+        equal:
+          path: spec.type
+          value: LoadBalancer 
