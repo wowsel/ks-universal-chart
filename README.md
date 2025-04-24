@@ -214,6 +214,7 @@ The chart can automatically create associated resources based on your configurat
 | Service | Creates Service based on container ports | `autoCreateService: true` |
 | Ingress | Creates Ingress with optional SSL | `autoCreateIngress: true` |
 | Certificate | Manages SSL certificates via cert-manager | `autoCreateCertificate: true` |
+| DexAuthenticator | Adds authentication via Dex | `ingress.dexAuthenticator.enabled: true` |
 | ServiceMonitor | Creates Prometheus ServiceMonitor | `autoCreateServiceMonitor: true` |
 | PDB | Creates PodDisruptionBudget | `autoCreatePdb: true` |
 | ServiceAccount | Creates dedicated ServiceAccount | `autoCreateServiceAccount: true` |

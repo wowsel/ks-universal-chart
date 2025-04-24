@@ -131,6 +131,96 @@ deployments:
 - Valid domain configuration
 </details>
 
+## 🔐 DexAuthenticator Auto-creation
+
+<details>
+<summary>DexAuthenticator Configuration</summary>
+
+```yaml
+# DexAuthenticator in standalone ingress
+ingresses:
+  ingress-with-dex:
+    hosts:
+      - host: app.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            service: app-service
+    dexAuthenticator:
+      enabled: true                                  # Enable DexAuthenticator for this ingress
+      sendAuthorizationHeader: false                 # Optional: Send Authorization header to the application
+      applicationIngressCertificateSecretName: tls   # Secret with SSL certificate
+      applicationIngressClassName: nginx             # Ingress class name
+      keepUsersLoggedInFor: "720h"                   # Optional: Session duration
+      allowedGroups:                                 # Optional: Restrict access to specific groups
+        - everyone
+      whitelistSourceRanges:                         # Optional: Restrict access to specific IP ranges
+        - 1.1.1.1/32
+```
+
+```yaml
+# DexAuthenticator in deployment with auto-created ingress
+deployments:
+  app-with-dex:
+    autoCreateIngress: true
+    ingress:
+      hosts:
+        - host: deploy.example.com
+          paths:
+            - path: /
+              pathType: Prefix
+      dexAuthenticator:
+        enabled: true
+        sendAuthorizationHeader: true
+        applicationIngressCertificateSecretName: ingress-tls
+        keepUsersLoggedInFor: "48h"
+        allowedGroups:
+          - developers
+```
+
+```yaml
+# Multiple domains with a single DexAuthenticator
+deployments:
+  multi-domain-app:
+    autoCreateIngress: true
+    ingress:
+      hosts:
+        - host: first.example.com
+          paths:
+            - path: /
+        - host: second.example.com
+          paths:
+            - path: /
+      dexAuthenticator:
+        enabled: true
+        applicationIngressCertificateSecretName: ingress-tls
+        additionalApplications:
+          - domain: additional-app.example.com
+            ingressSecretName: ingress-tls
+            ingressClassName: nginx
+            signOutURL: "/logout"
+```
+
+### Features
+- Automatic creation of DexAuthenticator resources for Ingress hosts
+- Support for multiple host configurations
+- Integration with global domain settings
+- Standalone or auto-created ingress support
+- IP whitelisting support
+- Group restrictions support
+- **Automatic addition of required annotations to Ingress resources:**
+  ```yaml
+  annotations:
+    nginx.ingress.kubernetes.io/auth-signin: https://$host/dex-authenticator/sign_in
+    nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+    nginx.ingress.kubernetes.io/auth-url: https://<dex-name>-dex-authenticator.<namespace>.svc.cluster.local/dex-authenticator/auth
+  ```
+
+### Requirements
+- Deckhouse Kubernetes Platform with user-authn module enabled
+- Valid Ingress configuration with host(s)
+</details>
+
 ## 📊 ServiceMonitor Auto-creation
 
 <details>

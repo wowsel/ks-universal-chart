@@ -1,0 +1,107 @@
+{{/* DexAuthenticator template */}}
+{{- define "ks-universal.dexAuthenticator" -}}
+{{- $name := .name -}}
+{{- $dexConfig := .dexConfig -}}
+{{- $host := .host -}}
+{{- $root := .root -}}
+{{- $namespace := .namespace | default $root.Release.Namespace -}}
+
+apiVersion: deckhouse.io/v1
+kind: DexAuthenticator
+metadata:
+  name: {{ $name }}
+  namespace: {{ $namespace }}
+  labels:
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $name) | nindent 4 }}
+spec:
+  applicationDomain: {{ $host }}
+  {{- if $dexConfig.sendAuthorizationHeader }}
+  sendAuthorizationHeader: {{ $dexConfig.sendAuthorizationHeader }}
+  {{- end }}
+  {{- if $dexConfig.applicationIngressCertificateSecretName }}
+  applicationIngressCertificateSecretName: {{ $dexConfig.applicationIngressCertificateSecretName | quote }}
+  {{- end }}
+  {{- if $dexConfig.applicationIngressClassName }}
+  applicationIngressClassName: {{ $dexConfig.applicationIngressClassName | quote }}
+  {{- end }}
+  {{- if $dexConfig.keepUsersLoggedInFor }}
+  keepUsersLoggedInFor: {{ $dexConfig.keepUsersLoggedInFor | quote }}
+  {{- end }}
+  {{- if $dexConfig.allowedGroups }}
+  allowedGroups:
+    {{- toYaml $dexConfig.allowedGroups | nindent 4 }}
+  {{- end }}
+  {{- if $dexConfig.whitelistSourceRanges }}
+  whitelistSourceRanges:
+    {{- toYaml $dexConfig.whitelistSourceRanges | nindent 4 }}
+  {{- end }}
+  {{- if $dexConfig.additionalApplications }}
+  additionalApplications:
+    {{- range $app := $dexConfig.additionalApplications }}
+    - domain: {{ $app.domain }}
+      {{- if $app.ingressSecretName }}
+      ingressSecretName: {{ $app.ingressSecretName }}
+      {{- end }}
+      {{- if $app.ingressClassName }}
+      ingressClassName: {{ $app.ingressClassName }}
+      {{- end }}
+      {{- if $app.signOutURL }}
+      signOutURL: {{ $app.signOutURL }}
+      {{- end }}
+      {{- if $app.whitelistSourceRanges }}
+      whitelistSourceRanges:
+        {{- toYaml $app.whitelistSourceRanges | nindent 8 }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{/* Standalone DexAuthenticators */}}
+{{- if .Values.dexAuthenticators }}
+{{- range $dexName, $dexConfig := .Values.dexAuthenticators }}
+---
+{{- include "ks-universal.dexAuthenticator" (dict "name" $dexName "dexConfig" $dexConfig "host" $dexConfig.applicationDomain "root" $ "namespace" $dexConfig.namespace) }}
+{{- end }}
+{{- end }}
+
+{{/* DexAuthenticators from ingresses */}}
+{{- if .Values.ingresses }}
+{{- range $ingressName, $ingressConfig := .Values.ingresses }}
+{{- if and $ingressConfig.dexAuthenticator $ingressConfig.dexAuthenticator.enabled }}
+{{- $generic := $.Values.generic | default dict -}}
+{{- $ingressesGeneral := $generic.ingressesGeneral | default dict -}}
+{{- $globalDomain := $ingressesGeneral.domain | default "" | trim -}}
+{{- /* Apply defaults using the same helper as autoCreateIngress */}}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" $ingressConfig "general" $.Values.generic.ingressesGeneral) | fromYaml }}
+
+{{- /* Create a DexAuthenticator for each host in the ingress */}}
+{{- range $hostEntry := $defaultedIngress.hosts }}
+{{- $host := include "ks-universal.computedIngressHost" (dict "host" $hostEntry.host "subdomain" $hostEntry.subdomain "globalDomain" $globalDomain) | trim }}
+{{- if $host }}
+---
+{{- include "ks-universal.dexAuthenticator" (dict "name" (printf "%s-%s" $ingressName (regexReplaceAll "\\." $host "-")) "dexConfig" $ingressConfig.dexAuthenticator "host" $host "root" $ "namespace" $ingressConfig.namespace) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+
+{{/* DexAuthenticators from deployments with autoCreateIngress enabled */}}
+{{- range $deploymentName, $deploymentConfig := .Values.deployments }}
+{{- if and $deploymentConfig.autoCreateIngress $deploymentConfig.ingress $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
+{{- $generic := $.Values.generic | default dict -}}
+{{- $ingressesGeneral := $generic.ingressesGeneral | default dict -}}
+{{- $globalDomain := $ingressesGeneral.domain | default "" | trim -}}
+{{- /* Apply defaults using the same helper as autoCreateIngress */}}
+{{- $defaultedIngress := include "ks-universal.ingressDefaults" (dict "ingress" ($deploymentConfig.ingress | default dict) "general" $.Values.generic.ingressesGeneral) | fromYaml }}
+
+{{- /* Create a DexAuthenticator for each host in the ingress */}}
+{{- range $hostEntry := $defaultedIngress.hosts }}
+{{- $host := include "ks-universal.computedIngressHost" (dict "host" $hostEntry.host "subdomain" $hostEntry.subdomain "globalDomain" $globalDomain) | trim }}
+{{- if $host }}
+---
+{{- include "ks-universal.dexAuthenticator" (dict "name" (printf "%s-%s" $deploymentName (regexReplaceAll "\\." $host "-")) "dexConfig" $deploymentConfig.ingress.dexAuthenticator "host" $host "root" $ "namespace" $deploymentConfig.namespace) }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }}
+{{- end }} 

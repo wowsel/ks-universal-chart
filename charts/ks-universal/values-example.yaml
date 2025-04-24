@@ -269,3 +269,39 @@ ingresses:
             pathType: Exact
             service: main2
             portName: http
+
+  # Example with DexAuthenticator for authentication
+  app-with-auth:
+    hosts:
+      - host: secure-app.example.com
+        paths:
+          - path: /
+            pathType: Prefix
+            service: secure-app
+            portName: http
+    # DexAuthenticator configuration
+    dexAuthenticator:
+      enabled: true
+      sendAuthorizationHeader: false
+      applicationIngressCertificateSecretName: "ingress-tls"
+      applicationIngressClassName: "nginx"
+      keepUsersLoggedInFor: "720h"
+      allowedGroups:
+        - developers
+        - operators
+      whitelistSourceRanges:
+        - 10.0.0.0/8
+
+# Standalone DexAuthenticator configuration
+dexAuthenticators:
+  standalone-auth:
+    applicationDomain: custom-auth.example.com
+    sendAuthorizationHeader: true
+    applicationIngressCertificateSecretName: "ingress-tls"
+    applicationIngressClassName: "nginx"
+    keepUsersLoggedInFor: "48h"
+    additionalApplications:
+      - domain: extra-app.example.com
+        ingressSecretName: ingress-tls
+        ingressClassName: nginx
+        signOutURL: "/logout"

@@ -1,0 +1,39 @@
+suite: Ingress with DexAuthenticator
+templates:
+  - ingress.yaml
+tests:
+  - it: should add DexAuthenticator annotations to ingress
+    set:
+      generic:
+        ingressesGeneral:
+          domain: example.com
+          annotations:
+            some-annotation: "some-value"
+      ingresses:
+        app-with-dex:
+          hosts:
+            - host: app.example.com
+              paths:
+                - path: /
+                  pathType: Prefix
+                  service: app-service
+          dexAuthenticator:
+            enabled: true
+            applicationIngressCertificateSecretName: ingress-tls
+    asserts:
+      - isKind:
+          of: Ingress
+      - equal:
+          path: metadata.name
+          value: app-with-dex
+      - exists:
+          path: metadata.annotations
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
+          value: https://$host/dex-authenticator/sign_in
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-response-headers"]
+          value: X-Auth-Request-User,X-Auth-Request-Email
+      - matchRegex:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-url"]
+          pattern: https://app-with-dex-dex-authenticator..*svc.cluster.local/dex-authenticator/auth 

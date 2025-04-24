@@ -371,7 +371,60 @@ Computed Ingress Host
   {{- end }}
 {{- end }}
 
+{{/*
+DexAuthenticator validation
+*/}}
+{{- define "ks-universal.validateDexAuthenticator" -}}
+{{- $name := .name -}}
+{{- $config := .config -}}
 
+{{- if not $config -}}
+{{- fail (printf "DexAuthenticator %s: configuration must not be empty" $name) -}}
+{{- end -}}
+
+{{/* Check for applicationDomain if it's a standalone DexAuthenticator */}}
+{{- if and (eq .context "standalone") (not $config.applicationDomain) -}}
+{{- fail (printf "DexAuthenticator %s: applicationDomain is required" $name) -}}
+{{- end -}}
+
+{{/* Validate keepUsersLoggedInFor format if provided */}}
+{{- if $config.keepUsersLoggedInFor -}}
+{{- if not (regexMatch "^([0-9]+h([0-9]+m)?|[0-9]+m)$" $config.keepUsersLoggedInFor) -}}
+{{- fail (printf "DexAuthenticator %s: keepUsersLoggedInFor must be in the format: 30m, 1h, 2h30m, 24h" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate allowedGroups if provided */}}
+{{- if $config.allowedGroups -}}
+{{- if not (kindIs "slice" $config.allowedGroups) -}}
+{{- fail (printf "DexAuthenticator %s: allowedGroups must be a list" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate whitelistSourceRanges if provided */}}
+{{- if $config.whitelistSourceRanges -}}
+{{- if not (kindIs "slice" $config.whitelistSourceRanges) -}}
+{{- fail (printf "DexAuthenticator %s: whitelistSourceRanges must be a list" $name) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate additionalApplications if provided */}}
+{{- if $config.additionalApplications -}}
+{{- if not (kindIs "slice" $config.additionalApplications) -}}
+{{- fail (printf "DexAuthenticator %s: additionalApplications must be a list" $name) -}}
+{{- end -}}
+{{- range $index, $app := $config.additionalApplications -}}
+{{- if not $app.domain -}}
+{{- fail (printf "DexAuthenticator %s: domain is required for each additionalApplication" $name) -}}
+{{- end -}}
+{{- if $app.whitelistSourceRanges -}}
+{{- if not (kindIs "slice" $app.whitelistSourceRanges) -}}
+{{- fail (printf "DexAuthenticator %s: whitelistSourceRanges must be a list in additionalApplication %s" $name $app.domain) -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
+{{- end -}}
 
 {{/*
 Ingress validation
@@ -400,9 +453,12 @@ Ingress validation
     {{- end }}
     {{/* Здесь можно добавить дополнительные проверки, если необходимо */}}
   {{- end }}
+
+  {{/* Validate DexAuthenticator if enabled */}}
+  {{- if and $config.dexAuthenticator $config.dexAuthenticator.enabled }}
+    {{- include "ks-universal.validateDexAuthenticator" (dict "name" $name "config" $config.dexAuthenticator "context" "ingress") }}
+  {{- end }}
 {{- end }}
-
-
 
 {{/*
 Config validation
@@ -623,6 +679,17 @@ Main validation entrypoint
 {{- if $root.Values.deployments -}}
 {{- range $deploymentName, $deploymentConfig := $root.Values.deployments -}}
 {{- include "ks-universal.validateDeployment" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $root) -}}
+{{- /* Validate DexAuthenticator in ingress if present */}}
+{{- if and $deploymentConfig.autoCreateIngress $deploymentConfig.ingress $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
+{{- include "ks-universal.validateDexAuthenticator" (dict "name" $deploymentName "config" $deploymentConfig.ingress.dexAuthenticator "context" "ingress") }}
+{{- end }}
+{{- end -}}
+{{- end -}}
+
+{{/* Standalone DexAuthenticators validation */}}
+{{- if $root.Values.dexAuthenticators -}}
+{{- range $dexName, $dexConfig := $root.Values.dexAuthenticators -}}
+{{- include "ks-universal.validateDexAuthenticator" (dict "name" $dexName "config" $dexConfig "context" "standalone") -}}
 {{- end -}}
 {{- end -}}
 

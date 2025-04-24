@@ -390,6 +390,16 @@ lifecycle:
 {{- end }}
 {{- end }}
 
+{{/* Helper for generating DexAuthenticator annotations */}}
+{{- define "ks-universal.dexAnnotations" -}}
+{{- $dexAuthConfig := .dexAuthConfig -}}
+{{- $dexName := .dexName -}}
+{{- $namespace := .namespace | default "default" -}}
+nginx.ingress.kubernetes.io/auth-signin: https://$host/dex-authenticator/sign_in
+nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
+nginx.ingress.kubernetes.io/auth-url: https://{{ $dexName }}-dex-authenticator.{{ $namespace }}.svc.cluster.local/dex-authenticator/auth
+{{- end }}
+
 {{/* Helper для автоматического создания ingress */}}
 {{- define "ks-universal.autoIngress" -}}
 {{- /* Подготовка переменных */ -}}
@@ -427,6 +437,10 @@ metadata:
 {{- else }}
     cert-manager.io/cluster-issuer: "letsencrypt"
 {{- end }}
+{{- end }}
+{{- /* Add DexAuthenticator annotations if enabled */ -}}
+{{- if and $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
+    {{ include "ks-universal.dexAnnotations" (dict "dexAuthConfig" $deploymentConfig.ingress.dexAuthenticator "dexName" $deploymentName "namespace" ($deploymentConfig.namespace | default $root.Release.Namespace)) | nindent 4 }}
 {{- end }}
 spec:
 {{- if $defaultedIngress.ingressClassName }}
