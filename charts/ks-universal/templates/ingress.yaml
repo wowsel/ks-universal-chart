@@ -12,6 +12,10 @@ metadata:
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
+  {{- /* Add DexAuthenticator annotations if enabled */ -}}
+  {{- if and $ingressConfig.dexAuthenticator $ingressConfig.dexAuthenticator.enabled }}
+  {{ include "ks-universal.dexAnnotations" (dict "root" $ "namespace" ($ingressConfig.namespace | default $.Release.Namespace)) | nindent 4 }}
+  {{- end }}
 spec:
   {{- if $defaultedIngress.ingressClassName }}
   ingressClassName: {{ $defaultedIngress.ingressClassName }}
