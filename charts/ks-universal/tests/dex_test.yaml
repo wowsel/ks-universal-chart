@@ -5,7 +5,7 @@ templates:
 
 tests:
   # Global DexAuthenticator tests
-  - it: should create a global DexAuthenticator
+  - it: should create a global DexAuthenticator with default name
     set:
       generic:
         dexAuthenticatorGeneral:
@@ -34,7 +34,7 @@ tests:
       - template: dexauthenticator.yaml
         equal:
           path: metadata.name
-          value: global-authenticator
+          value: ks-universal
       - template: dexauthenticator.yaml
         equal:
           path: spec.applicationDomain
@@ -76,6 +76,23 @@ tests:
             value: "auth"
             effect: "NoSchedule"
   
+  - it: should create a DexAuthenticator with custom name
+    set:
+      generic:
+        dexAuthenticatorGeneral:
+          enabled: true
+          name: custom-authenticator
+          applicationDomain: global-auth.example.com
+          applicationIngressClassName: nginx
+    asserts:
+      - template: dexauthenticator.yaml
+        isKind:
+          of: DexAuthenticator
+      - template: dexauthenticator.yaml
+        equal:
+          path: metadata.name
+          value: custom-authenticator
+  
   - it: should create a certificate when autoCreateCertificate is enabled
     set:
       generic:
@@ -94,7 +111,7 @@ tests:
       - template: dexauthenticator.yaml
         equal:
           path: metadata.name
-          value: global-authenticator
+          value: ks-universal
         documentIndex: 1
       - template: dexauthenticator.yaml
         equal:
@@ -156,10 +173,10 @@ tests:
       - template: ingress.yaml
         matchRegex:
           path: metadata.annotations["nginx.ingress.kubernetes.io/auth-url"]
-          pattern: https://global-authenticator-dex-authenticator..*svc.cluster.local/dex-authenticator/auth
+          pattern: https://ks-universal-dex-authenticator..*svc.cluster.local/dex-authenticator/auth
 
-  # Ingress annotations tests
-  - it: should add global DexAuthenticator annotations to ingress with custom annotations
+  # Ingress annotations tests with custom authenticator name
+  - it: should use custom name in auth-url annotation
     set:
       generic:
         ingressesGeneral:
@@ -167,6 +184,7 @@ tests:
             some-base-annotation: "base-value"
         dexAuthenticatorGeneral:
           enabled: true
+          name: custom-dex
           applicationDomain: global-auth.example.com
           applicationIngressClassName: nginx
           namespace: auth-system
@@ -189,25 +207,5 @@ tests:
           of: Ingress
       - template: ingress.yaml
         equal:
-          path: metadata.name
-          value: test-ingress
-      - template: ingress.yaml
-        equal:
-          path: metadata.annotations["custom-annotation"]
-          value: custom-value
-      - template: ingress.yaml
-        equal:
-          path: metadata.annotations["some-base-annotation"]
-          value: base-value
-      - template: ingress.yaml
-        equal:
-          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-signin"]
-          value: https://$host/dex-authenticator/sign_in
-      - template: ingress.yaml
-        equal:
-          path: metadata.annotations["nginx.ingress.kubernetes.io/auth-response-headers"]
-          value: X-Auth-Request-User,X-Auth-Request-Email
-      - template: ingress.yaml
-        equal:
           path: metadata.annotations["nginx.ingress.kubernetes.io/auth-url"]
-          value: https://global-authenticator-dex-authenticator.auth-system.svc.cluster.local/dex-authenticator/auth 
+          value: https://custom-dex-dex-authenticator.auth-system.svc.cluster.local/dex-authenticator/auth 

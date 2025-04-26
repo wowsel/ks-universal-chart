@@ -73,7 +73,7 @@ jobs:
     permissions:
       contents: write
     outputs:
-      new-version: ${{ steps.chart-info.outputs.new-version }}
+      chart-version: ${{ steps.chart-info.outputs.chart-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -87,12 +87,6 @@ jobs:
           CHART_NAME=$(grep -Po '^name:\s*\K.*' $CHART_DIR/Chart.yaml | tr -d '[:space:]')
           echo "chart-name=$CHART_NAME" >> $GITHUB_OUTPUT
           echo "chart-version=$CHART_VERSION" >> $GITHUB_OUTPUT
-          
-          # Increment patch version
-          IFS='.' read -r major minor patch <<< "$CHART_VERSION"
-          NEW_PATCH=$((patch + 1))
-          NEW_VERSION="$major.$minor.$NEW_PATCH"
-          echo "new-version=$NEW_VERSION" >> $GITHUB_OUTPUT
 
       - name: Generate Release Notes
         id: release-notes
@@ -108,7 +102,7 @@ jobs:
           
           # Create release notes with chart info and commits
           cat > release_notes.md << EOF
-          # Release ${{ steps.chart-info.outputs.chart-name }} v${{ steps.chart-info.outputs.new-version }}
+          # Release ${{ steps.chart-info.outputs.chart-name }} v${{ steps.chart-info.outputs.chart-version }}
           
           ## Changes in this release:
           
@@ -117,7 +111,7 @@ jobs:
           ## Chart Info
           
           * Chart Name: ${{ steps.chart-info.outputs.chart-name }}
-          * Version: ${{ steps.chart-info.outputs.new-version }}
+          * Version: ${{ steps.chart-info.outputs.chart-version }}
           * Generated: $(date +'%Y-%m-%d %H:%M:%S')
           EOF
           
@@ -128,23 +122,11 @@ jobs:
           echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
           echo "$delimiter" >> $GITHUB_OUTPUT
 
-      - name: Update Chart Version
-        run: |
-          sed -i "s/version:.*/version: ${{ steps.chart-info.outputs.new-version }}/" $CHART_DIR/Chart.yaml
-          
-      - name: Commit and Push Chart Version Update
-        run: |
-          git config user.name "GitHub Actions"
-          git config user.email "actions@github.com"
-          git add $CHART_DIR/Chart.yaml
-          git commit -m "chore: bump chart version to ${{ steps.chart-info.outputs.new-version }}"
-          git push
-
       - name: Create Release and Tag
         uses: softprops/action-gh-release@v2
         with:
-          name: "v${{ steps.chart-info.outputs.new-version }}"
-          tag_name: "v${{ steps.chart-info.outputs.new-version }}"
+          name: "v${{ steps.chart-info.outputs.chart-version }}"
+          tag_name: "v${{ steps.chart-info.outputs.chart-version }}"
           body: ${{ steps.release-notes.outputs.release-notes }}
           draft: false
           prerelease: false
@@ -210,9 +192,9 @@ jobs:
             echo "No existing index found. Creating new repository."
           fi
           
-          # Package chart with the new version from the auto-release
-          VERSION="${{ needs.create-release.outputs.new-version }}"
-          echo "Using version: $VERSION"
+          # Package chart with version from Chart.yaml (no auto-incrementing)
+          CHART_VERSION="${{ needs.create-release.outputs.chart-version }}"
+          echo "Using version: $CHART_VERSION"
           
           # Package chart
           helm package $CHART_DIR --destination .cr-release-packages
@@ -296,9 +278,6 @@ jobs:
           
           # Extract version from release tag
           VERSION=${GITHUB_REF#refs/tags/v}
-          
-          # Update version in Chart.yaml
-          sed -i "s/version:.*/version: $VERSION/" $CHART_DIR/Chart.yaml
           
           # Try to download existing charts first
           if curl -sSf -o existing-index.yaml ${{ env.CHART_REPOSITORY }}/index.yaml; then

@@ -395,14 +395,18 @@ lifecycle:
 {{- $root := .root -}}
 {{- $namespace := .namespace | default $root.Release.Namespace -}}
 
-{{/* Get global DexAuthenticator namespace if configured */}}
+{{/* Get global DexAuthenticator namespace and name if configured */}}
+{{- $authName := "" -}}
 {{- if and $root.Values.generic $root.Values.generic.dexAuthenticatorGeneral -}}
   {{- $namespace = $root.Values.generic.dexAuthenticatorGeneral.namespace | default $root.Release.Namespace -}}
+  {{- $authName = $root.Values.generic.dexAuthenticatorGeneral.name | default (include "ks-universal.name" $root) -}}
+{{- else -}}
+  {{- $authName = include "ks-universal.name" $root -}}
 {{- end -}}
 
 nginx.ingress.kubernetes.io/auth-signin: https://$host/dex-authenticator/sign_in
 nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
-nginx.ingress.kubernetes.io/auth-url: https://global-authenticator-dex-authenticator.{{ $namespace }}.svc.cluster.local/dex-authenticator/auth
+nginx.ingress.kubernetes.io/auth-url: https://{{ $authName }}-dex-authenticator.{{ $namespace }}.svc.cluster.local/dex-authenticator/auth
 {{- end }}
 
 {{/* Helper для автоматического создания ingress */}}
