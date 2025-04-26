@@ -709,6 +709,26 @@ CronJob validation
 {{- range $containerName, $container := $cronJobConfig.containers -}}
 {{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "CronJob %s" $cronJobName) "root" $root) -}}
 {{- end -}}
+
+{{/* Validate parallelism if provided */}}
+{{- if $cronJobConfig.parallelism -}}
+{{- if not (kindIs "int" $cronJobConfig.parallelism) -}}
+{{- fail (printf "CronJob %s: parallelism must be an integer" $cronJobName) -}}
+{{- end -}}
+{{- if le $cronJobConfig.parallelism 0 -}}
+{{- fail (printf "CronJob %s: parallelism must be greater than 0" $cronJobName) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate completions if provided */}}
+{{- if $cronJobConfig.completions -}}
+{{- if not (kindIs "int" $cronJobConfig.completions) -}}
+{{- fail (printf "CronJob %s: completions must be an integer" $cronJobName) -}}
+{{- end -}}
+{{- if le $cronJobConfig.completions 0 -}}
+{{- fail (printf "CronJob %s: completions must be greater than 0" $cronJobName) -}}
+{{- end -}}
+{{- end -}}
 {{- end -}}
 
 {{/*
@@ -729,6 +749,26 @@ Job validation
 {{- end -}}
 {{- range $containerName, $container := $jobConfig.containers -}}
 {{- include "ks-universal.validateContainer" (dict "containerName" $containerName "container" $container "context" (printf "Job %s" $jobName) "root" $root) -}}
+{{- end -}}
+
+{{/* Validate parallelism if provided */}}
+{{- if $jobConfig.parallelism -}}
+{{- if not (kindIs "int" $jobConfig.parallelism) -}}
+{{- fail (printf "Job %s: parallelism must be an integer" $jobName) -}}
+{{- end -}}
+{{- if le $jobConfig.parallelism 0 -}}
+{{- fail (printf "Job %s: parallelism must be greater than 0" $jobName) -}}
+{{- end -}}
+{{- end -}}
+
+{{/* Validate completions if provided */}}
+{{- if $jobConfig.completions -}}
+{{- if not (kindIs "int" $jobConfig.completions) -}}
+{{- fail (printf "Job %s: completions must be an integer" $jobName) -}}
+{{- end -}}
+{{- if le $jobConfig.completions 0 -}}
+{{- fail (printf "Job %s: completions must be greater than 0" $jobName) -}}
+{{- end -}}
 {{- end -}}
 {{- end -}}
 
