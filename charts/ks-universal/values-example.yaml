@@ -58,6 +58,7 @@ generic:
     enabled: true                                   # Enable global DexAuthenticator
     applicationDomain: auth.example.com             # Domain for DexAuthenticator
     applicationIngressClassName: nginx              # Ingress class name
+    name: custom-dex                                # Optional: custom name for the authenticator (default: chart name)
     namespace: auth-system                          # Optional: namespace for DexAuthenticator (default: release namespace)
     sendAuthorizationHeader: true                   # Optional: Send Authorization header to applications
     applicationIngressCertificateSecretName: "tls"  # Optional: SSL certificate secret

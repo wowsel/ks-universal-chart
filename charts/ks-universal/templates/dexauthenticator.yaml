@@ -7,14 +7,15 @@
 {{- if and $generic.ingressesGeneral $generic.ingressesGeneral.domain -}}
   {{- $globalDomain = $generic.ingressesGeneral.domain -}}
 {{- end -}}
+{{- $authName := $dexGeneral.name | default (include "ks-universal.name" $root) -}}
 
 apiVersion: deckhouse.io/v1
 kind: DexAuthenticator
 metadata:
-  name: global-authenticator
+  name: {{ $authName }}
   namespace: {{ $dexGeneral.namespace | default $root.Release.Namespace }}
   labels:
-    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" "global-authenticator") | nindent 4 }}
+    {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $authName) | nindent 4 }}
 spec:
   applicationDomain: {{ $dexGeneral.applicationDomain | required "global DexAuthenticator requires applicationDomain" }}
   applicationIngressClassName: {{ $dexGeneral.applicationIngressClassName | required "global DexAuthenticator requires applicationIngressClassName" | quote }}
@@ -78,6 +79,7 @@ spec:
 {{/* Create certificate for global DexAuthenticator if autoCreateCertificate is enabled */}}
 {{- $generic := .Values.generic }}
 {{- $dexGeneral := $generic.dexAuthenticatorGeneral }}
+{{- $authName := $dexGeneral.name | default (include "ks-universal.name" .) }}
 {{- if $dexGeneral.autoCreateCertificate }}
 {{- $certificateConfig := dict "domains" (list $dexGeneral.applicationDomain) }}
 {{- if $dexGeneral.certificate }}
@@ -90,11 +92,11 @@ spec:
 apiVersion: cert-manager.io/v1
 kind: Certificate
 metadata:
-  name: global-authenticator
+  name: {{ $authName }}
   labels:
-    {{- include "ks-universal.labels" (dict "Chart" .Chart "Release" .Release "name" "global-authenticator") | nindent 4 }}
+    {{- include "ks-universal.labels" (dict "Chart" .Chart "Release" .Release "name" $authName) | nindent 4 }}
 spec:
-  secretName: global-authenticator-tls
+  secretName: {{ $authName }}-tls
   issuerRef:
     {{- if $certificateConfig.clusterIssuer }}
     kind: ClusterIssuer

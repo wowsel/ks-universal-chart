@@ -150,6 +150,7 @@ generic:
     applicationIngressClassName: nginx              # Ingress class name
     
     # Optional fields
+    name: custom-authenticator                      # Custom name for the authenticator (default: chart name)
     namespace: auth-system                          # Namespace for DexAuthenticator (default: release namespace)
     sendAuthorizationHeader: true                   # Send Authorization header to applications
     applicationIngressCertificateSecretName: "tls"  # SSL certificate secret
@@ -224,6 +225,7 @@ deployments:
 
 ### Features
 - Single global DexAuthenticator instance for the entire chart
+- Customizable DexAuthenticator name (useful for subcharts)
 - Automatic integration with ingress resources
 - Support for multiple protected applications
 - IP whitelisting and group restrictions
@@ -234,7 +236,7 @@ deployments:
   annotations:
     nginx.ingress.kubernetes.io/auth-signin: https://$host/dex-authenticator/sign_in
     nginx.ingress.kubernetes.io/auth-response-headers: X-Auth-Request-User,X-Auth-Request-Email
-    nginx.ingress.kubernetes.io/auth-url: https://global-authenticator-dex-authenticator.<namespace>.svc.cluster.local/dex-authenticator/auth
+    nginx.ingress.kubernetes.io/auth-url: https://<authenticator-name>-dex-authenticator.<namespace>.svc.cluster.local/dex-authenticator/auth
   ```
 
 ### Requirements
