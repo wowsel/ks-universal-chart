@@ -36,6 +36,18 @@ spec:
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
+      {{- if $defaultedConfig.nodeSelector }}
+      nodeSelector:
+        {{- toYaml $defaultedConfig.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.tolerations }}
+      tolerations:
+        {{- toYaml $defaultedConfig.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.affinity }}
+      affinity:
+        {{- toYaml $defaultedConfig.affinity | nindent 8 }}
+      {{- end }}
       containers:
       {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 | trimPrefix "\n" }}
       {{- if $defaultedConfig.volumes }}
@@ -75,6 +87,18 @@ spec:
       {{- if $defaultedConfig.securityContext }}
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.nodeSelector }}
+      nodeSelector:
+        {{- toYaml $defaultedConfig.nodeSelector | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.tolerations }}
+      tolerations:
+        {{- toYaml $defaultedConfig.tolerations | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.affinity }}
+      affinity:
+        {{- toYaml $defaultedConfig.affinity | nindent 8 }}
       {{- end }}
       containers:
       {{- $containersWithArgs := dict }}
