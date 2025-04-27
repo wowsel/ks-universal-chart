@@ -1,0 +1,33 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Troubleshooting Guide
+
+The chart provides a comprehensive troubleshooting guide for common issues:
+
+## Common Issue Categories
+
+- **Validation Errors**: Problems with input values
+- **Rendering Issues**: Issues with YAML generation
+- **Inheritance Issues**: Problems with global settings
+- **Auto-creation Issues**: Issues with auto-created resources
+
+## Key Troubleshooting Techniques
+
+- Check validation errors for missing fields
+- Verify proper indentation in templates
+- Ensure inheritance works correctly
+- Review auto-creation configurations
+- Check Kubernetes compatibility
+
+## Common Solutions
+
+- Add missing required fields
+- Fix port configurations
+- Resolve duplicate resource names
+- Set correct auto-creation flags
+- Fix indentation in custom templates
+
+See [TROUBLESHOOTING.md](mdc:AI_HELPER/TROUBLESHOOTING.md) for detailed troubleshooting solutions.

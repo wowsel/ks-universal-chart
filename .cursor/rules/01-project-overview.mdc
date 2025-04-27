@@ -1,0 +1,15 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# KS Universal Helm Chart Overview
+
+The KS Universal Helm Chart is a flexible, universal chart for deploying applications to Kubernetes with comprehensive features.
+
+## Main Components
+
+- [README.md](mdc:README.md) - Main documentation and project overview
+- [charts/ks-universal](mdc:charts/ks-universal/) - The actual Helm chart
+- [examples/](mdc:examples/) - Example configurations for different use cases
+- [docs/](mdc:docs/) - Detailed documentation

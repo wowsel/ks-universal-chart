@@ -1,0 +1,43 @@
+suite: test dexauthenticator
+templates:
+  - dexauthenticator.yaml
+tests:
+  - it: should create a dex authenticator with specified configuration
+    set:
+      generic:
+        dexAuthenticatorGeneral:
+          enabled: true
+          applicationDomain: "auth.example.com"
+          applicationIngressClassName: "nginx"
+          keepUsersLoggedInFor: "24h"
+          allowedGroups:
+            - developers
+            - admins
+          whitelistSourceRanges:
+            - 10.0.0.0/8
+          additionalApplications:
+            - domain: app1.example.com
+              whitelistSourceRanges:
+                - 10.0.0.0/8
+            - domain: app2.example.com
+    asserts:
+      - isKind:
+          of: DexAuthenticator
+      - isAPIVersion:
+          of: deckhouse.io/v1
+      - equal:
+          path: metadata.name
+          value: ks-universal
+      - equal:
+          path: spec.applicationDomain
+          value: auth.example.com
+      - equal:
+          path: spec.applicationIngressClassName
+          value: "nginx"
+      - equal:
+          path: spec.keepUsersLoggedInFor
+          value: "24h"
+      - matchSnapshot:
+          path: spec.allowedGroups
+      - matchSnapshot:
+          path: spec.additionalApplications 

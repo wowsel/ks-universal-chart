@@ -1,0 +1,9 @@
+should create a dex authenticator with specified configuration:
+  1: |
+    - developers
+    - admins
+  2: |
+    - domain: app1.example.com
+      whitelistSourceRanges:
+        - 10.0.0.0/8
+    - domain: app2.example.com

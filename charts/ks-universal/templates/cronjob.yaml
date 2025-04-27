@@ -47,10 +47,10 @@ spec:
       backoffLimit: {{ $defaultedConfig.backoffLimit }}
       {{- end }}
       {{- if $defaultedConfig.parallelism }}
-      parallelism: {{ $defaultedConfig.parallelism }}
+      parallelism: {{ int $defaultedConfig.parallelism }}
       {{- end }}
       {{- if $defaultedConfig.completions }}
-      completions: {{ $defaultedConfig.completions }}
+      completions: {{ int $defaultedConfig.completions }}
       {{- end }}
       template:
         metadata:

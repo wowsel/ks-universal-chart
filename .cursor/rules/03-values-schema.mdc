@@ -1,0 +1,41 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Values Schema Reference
+
+The chart offers a comprehensive configuration schema:
+
+- [AI_HELPER/VALUES_SCHEMA.md](mdc:AI_HELPER/VALUES_SCHEMA.md) - Complete schema documentation
+
+## Key Configuration Sections
+
+- `generic` - Global settings affecting all resources
+- `secretRefs` - Secret references for container environment variables
+- `deployments` - Deployment configurations
+- `services` - Service configurations
+- `cronJobs` - CronJob configurations
+- `jobs` - Job configurations
+- `dexAuthenticators` - DexAuthenticator configurations
+- `configs` - ConfigMap configurations
+- `persistentVolumeClaims` - PVC configurations
+- `hpas` - HorizontalPodAutoscaler configurations
+
+## Value Processing Behaviors
+
+- **Inheritance**: Resources inherit from global settings
+- **Defaults**: Default values are applied when not specified
+- **Overrides**: Local settings override global settings
+- **Templating**: String values can contain Go templates
+- **Environment Variables**: Can be specified directly or via secretRefs
+- **Domain Construction**: Domains can be constructed from subdomain and global domain
+
+## Validation Rules
+
+- **Required Fields**: Image, imageTag, etc. are required
+- **Port Ranges**: Ports must be between 1 and 65535
+- **Unique Port Names**: Port names must be unique within a container
+- **PDB Configuration**: Either minAvailable or maxUnavailable must be set
+- **HPA Metrics**: At least one metric must be defined
+- **Secret References**: Must exist and have valid structure

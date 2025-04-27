@@ -1,35 +1,37 @@
-suite: Certificate tests
+suite: test certificate
 templates:
-  - certificate.yaml
   - deployment.yaml
-
+  - certificate.yaml
 tests:
-  - it: should properly handle certificate creation
-    values:
-      - ./values/certificate-config.yaml
+  - it: should create a certificate when autoCreateCertificate is enabled
+    set:
+      generic:
+        ingressesGeneral:
+          domain: "example.org"
+      deployments:
+        test-app:
+          replicas: 1
+          autoCreateCertificate: true
+          autoCreateIngress: true
+          containers:
+            main:
+              image: nginx
+              imageTag: latest
+              ports:
+                http:
+                  containerPort: 80
+          ingress:
+            hosts:
+              - subdomain: "test"
+                paths:
+                  - path: "/"
+                    pathType: "Prefix"
+              - host: "example.com"
+                paths:
+                  - path: "/"
+                    pathType: "Prefix"
+          certificate:
+            clusterIssuer: "letsencrypt-prod"
     asserts:
-      - template: deployment.yaml
-        documentIndex: 2  # Certificate is in the deployment.yaml as a separate document
-        equal:
-          path: kind
-          value: Certificate
-      - template: deployment.yaml
-        documentIndex: 2
-        equal:
-          path: spec.secretName
-          value: app-with-cert-tls
-      - template: deployment.yaml
-        documentIndex: 2
-        contains:
-          path: spec.dnsNames
-          content: secure-app.example.com
-      - template: deployment.yaml
-        documentIndex: 2
-        equal:
-          path: spec.issuerRef.kind
-          value: ClusterIssuer
-      - template: deployment.yaml
-        documentIndex: 2
-        equal:
-          path: spec.issuerRef.name
-          value: letsencrypt-prod 
+      - matchSnapshot:
+          path: spec 

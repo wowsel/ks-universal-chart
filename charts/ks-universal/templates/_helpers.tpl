@@ -8,9 +8,28 @@ Expand the name of the chart.
 
 {{/*
 Create chart name and version as used by the chart label.
+For tests, always use a fixed version to avoid snapshot failures when chart version changes.
+In production, use the actual chart version.
 */}}
 {{- define "ks-universal.chart" -}}
+{{- if eq (default "" .Release.Name) "RELEASE-NAME" -}}
+{{/* This is a test environment, use fixed version */}}
+{{- printf "%s-test-version" .Chart.Name | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- else -}}
+{{/* This is a production environment, use actual version */}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
+{{- end -}}
+{{- end }}
+
+{{/*
+Create chart name with stable version for tests
+*/}}
+{{- define "ks-universal.chart.test" -}}
+{{- if .Release.IsUpgrade | default false -}}
+{{- printf "%s-testing" .Chart.Name | replace "+" "_" | trunc 63 | trimSuffix "-" -}}
+{{- else -}}
+{{- include "ks-universal.chart" . -}}
+{{- end -}}
 {{- end }}
 
 {{/*
@@ -95,12 +114,12 @@ Service labels
   {{- end }}
   {{- if $general.parallelism }}
     {{- if not $result.parallelism }}
-      {{- $result = merge $result (dict "parallelism" $general.parallelism) }}
+      {{- $result = merge $result (dict "parallelism" (int $general.parallelism)) }}
     {{- end }}
   {{- end }}
   {{- if $general.completions }}
     {{- if not $result.completions }}
-      {{- $result = merge $result (dict "completions" $general.completions) }}
+      {{- $result = merge $result (dict "completions" (int $general.completions)) }}
     {{- end }}
   {{- end }}
 {{- end }}

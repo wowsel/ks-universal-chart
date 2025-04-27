@@ -1,0 +1,25 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# AI Resources
+
+The chart includes special resources designed for AI agents:
+
+## Documentation for AI Agents
+
+- [AI_HELPER/README.md](mdc:AI_HELPER/README.md) - Overview for AI agents
+- [AI_HELPER/VALUES_SCHEMA.md](mdc:AI_HELPER/VALUES_SCHEMA.md) - Complete values schema
+- [AI_HELPER/DEVELOPMENT.md](mdc:AI_HELPER/DEVELOPMENT.md) - Development guidelines
+- [AI_HELPER/TESTING.md](mdc:AI_HELPER/TESTING.md) - Testing guidelines
+- [AI_HELPER/TROUBLESHOOTING.md](mdc:AI_HELPER/TROUBLESHOOTING.md) - Troubleshooting guide
+
+## Key Purposes
+
+- **VALUES_SCHEMA.md**: Comprehensive schema documentation with examples
+- **DEVELOPMENT.md**: Guidelines for chart development and extension
+- **TESTING.md**: Testing approach, cases, and validation methods
+- **TROUBLESHOOTING.md**: Common issues and their solutions
+
+These resources provide AI agents with detailed information about the chart's structure, capabilities, and usage patterns.

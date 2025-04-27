@@ -1,0 +1,28 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Template Structure
+
+The chart uses a modular template structure for generating Kubernetes resources:
+
+- `_helpers.tpl` - Core helper functions for resource generation
+- `_validation.tpl` - Validation functions to verify configuration
+- Resource-specific templates:
+  - `deployment.yaml` - Deployment resources
+  - `service.yaml` - Service resources
+  - `ingress.yaml` - Ingress resources
+  - `cronjob.yaml` - CronJob resources
+  - `job.yaml` - Job resources
+  - `certificate.yaml` - Certificate resources
+  - And other Kubernetes resource types
+
+## Helper Functions
+
+The chart includes a variety of helper functions for common tasks:
+
+- Resource generation helpers (e.g., `ks-universal.deploymentDefaults`)
+- Label and selector helpers (e.g., `ks-universal.labels`)
+- Validation helpers (e.g., `ks-universal.validateContainer`)
+- Utility helpers (e.g., `ks-universal.processSecretRefs`)

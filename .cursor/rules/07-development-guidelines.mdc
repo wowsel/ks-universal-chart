@@ -1,0 +1,36 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Development Guidelines
+
+For chart development and extension, follow these principles:
+
+## Key Principles
+
+- **Backward Compatibility**: Maintain compatibility with existing configurations
+- **Validation First**: Always validate inputs before processing
+- **Modular Design**: Keep components isolated and reusable
+- **Inheritance Model**: Support global settings with local overrides
+- **Clear Naming**: Use consistent and descriptive names
+
+## Common Patterns
+
+The chart uses several common patterns:
+
+- **Auto-creation Pattern**: Resources that can be automatically created from other resources
+- **Inheritance Pattern**: Applying global defaults with local overrides
+- **Validation Pattern**: Validating configuration before resource creation
+
+## Implementation Approach
+
+When extending the chart:
+
+1. Define the values schema
+2. Create validation functions
+3. Implement helper functions
+4. Update or create templates
+5. Add documentation and tests
+
+See [DEVELOPMENT.md](mdc:AI_HELPER/DEVELOPMENT.md) for detailed development guidelines.
