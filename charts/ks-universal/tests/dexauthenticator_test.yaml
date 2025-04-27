@@ -2,7 +2,7 @@ suite: test dexauthenticator
 templates:
   - dexauthenticator.yaml
 tests:
-  - it: should create a global dexauthenticator
+  - it: should create a dex authenticator with specified configuration
     set:
       generic:
         dexAuthenticatorGeneral:

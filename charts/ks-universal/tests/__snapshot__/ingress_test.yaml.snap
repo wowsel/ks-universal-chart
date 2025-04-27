@@ -8,7 +8,7 @@ should create an ingress with specified configuration:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
     spec:
       selector:
@@ -23,7 +23,7 @@ should create an ingress with specified configuration:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: test-app
-            helm.sh/chart: ks-universal-0.2.14
+            helm.sh/chart: ks-universal-test-version
         spec:
           containers:
             - image: nginx:latest
@@ -44,7 +44,7 @@ should create an ingress with specified configuration:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
     spec:
       ingressClassName: nginx

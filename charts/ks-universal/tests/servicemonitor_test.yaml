@@ -1,6 +1,7 @@
 suite: test servicemonitor
 templates:
   - deployment.yaml
+  - servicemonitor.yaml
 tests:
   - it: should create a service monitor when autoCreateServiceMonitor is enabled
     set:

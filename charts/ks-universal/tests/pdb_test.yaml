@@ -1,6 +1,7 @@
 suite: test pdb
 templates:
   - deployment.yaml
+  - pdb.yaml
 tests:
   - it: should create a pod disruption budget when autoCreatePdb is enabled
     set:

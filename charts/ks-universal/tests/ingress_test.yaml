@@ -1,6 +1,7 @@
 suite: test ingress
 templates:
   - deployment.yaml
+  - ingress.yaml
 tests:
   - it: should create an ingress with specified configuration
     set:

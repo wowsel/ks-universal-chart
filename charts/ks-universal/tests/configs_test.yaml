@@ -2,7 +2,7 @@ suite: test configs
 templates:
   - configs.yaml
 tests:
-  - it: should create configmaps from configs
+  - it: should create config maps and secrets
     set:
       configs:
         test-config:

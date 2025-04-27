@@ -2,7 +2,7 @@ suite: test cronjob
 templates:
   - cronjob.yaml
 tests:
-  - it: should create a cronjob
+  - it: should create a cron job with specified configuration
     set:
       cronJobs:
         test-backup:

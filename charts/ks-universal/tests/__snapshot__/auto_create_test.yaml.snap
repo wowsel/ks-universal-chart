@@ -8,7 +8,7 @@ should create auto-created resources without certificate:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
     spec:
       replicas: 2
@@ -24,7 +24,7 @@ should create auto-created resources without certificate:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: test-app
-            helm.sh/chart: ks-universal-0.2.14
+            helm.sh/chart: ks-universal-test-version
         spec:
           affinity:
             podAntiAffinity:
@@ -57,7 +57,7 @@ should create auto-created resources without certificate:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
   3: |
     apiVersion: policy/v1
@@ -68,7 +68,7 @@ should create auto-created resources without certificate:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
     spec:
       maxUnavailable: 1
@@ -87,7 +87,7 @@ should create auto-created resources without certificate:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
     spec:
       ingressClassName: nginx
@@ -111,7 +111,7 @@ should create auto-created resources without certificate:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: test-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: test-app
     spec:
       endpoints:

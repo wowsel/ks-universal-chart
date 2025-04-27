@@ -8,7 +8,7 @@ should render a complete example web application:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: web-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: web-app
     spec:
       replicas: 2
@@ -24,7 +24,7 @@ should render a complete example web application:
             app.kubernetes.io/instance: RELEASE-NAME
             app.kubernetes.io/managed-by: Helm
             app.kubernetes.io/name: web-app
-            helm.sh/chart: ks-universal-0.2.14
+            helm.sh/chart: ks-universal-test-version
         spec:
           containers:
             - image: nginx:1.21
@@ -63,7 +63,7 @@ should render a complete example web application:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: web-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: web-app
     spec:
       rules:
@@ -86,7 +86,7 @@ should render a complete example web application:
         app.kubernetes.io/instance: RELEASE-NAME
         app.kubernetes.io/managed-by: Helm
         app.kubernetes.io/name: web-app
-        helm.sh/chart: ks-universal-0.2.14
+        helm.sh/chart: ks-universal-test-version
       name: web-app
     spec:
       ports:

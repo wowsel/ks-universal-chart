@@ -1,4 +1,4 @@
-should create configmaps from configs:
+should create config maps and secrets:
   1: |
     app.properties: |
       property1=value1

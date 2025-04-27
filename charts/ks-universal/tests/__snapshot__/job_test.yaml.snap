@@ -1,4 +1,4 @@
-should create a job:
+should create a job with specified configuration:
   1: |
     containers:
       - command:

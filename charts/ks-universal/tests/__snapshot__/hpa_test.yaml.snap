@@ -1,4 +1,4 @@
-should create a horizontal pod autoscaler for a deployment:
+should create HPA with default configuration:
   1: |
     maxReplicas: 5
     metrics:

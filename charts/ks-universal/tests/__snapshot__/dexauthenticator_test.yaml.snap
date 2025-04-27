@@ -1,4 +1,4 @@
-should create a global dexauthenticator:
+should create a dex authenticator with specified configuration:
   1: |
     - developers
     - admins

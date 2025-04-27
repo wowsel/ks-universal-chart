@@ -2,7 +2,7 @@ suite: test hpa
 templates:
   - hpa.yaml
 tests:
-  - it: should create a horizontal pod autoscaler for a deployment
+  - it: should create HPA with default configuration
     set:
       deployments:
         test-app:

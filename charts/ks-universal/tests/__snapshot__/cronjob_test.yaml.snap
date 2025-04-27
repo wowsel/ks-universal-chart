@@ -1,4 +1,4 @@
-should create a cronjob:
+should create a cron job with specified configuration:
   1: |
     containers:
       - command:
