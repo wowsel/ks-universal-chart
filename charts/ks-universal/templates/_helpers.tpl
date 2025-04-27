@@ -95,12 +95,12 @@ Service labels
   {{- end }}
   {{- if $general.parallelism }}
     {{- if not $result.parallelism }}
-      {{- $result = merge $result (dict "parallelism" $general.parallelism) }}
+      {{- $result = merge $result (dict "parallelism" (int $general.parallelism)) }}
     {{- end }}
   {{- end }}
   {{- if $general.completions }}
     {{- if not $result.completions }}
-      {{- $result = merge $result (dict "completions" $general.completions) }}
+      {{- $result = merge $result (dict "completions" (int $general.completions)) }}
     {{- end }}
   {{- end }}
 {{- end }}

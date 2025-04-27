@@ -1,0 +1,17 @@
+suite: test pdb
+templates:
+  - deployment.yaml
+tests:
+  - it: should create a pod disruption budget when autoCreatePdb is enabled
+    set:
+      deployments:
+        test-app:
+          containers:
+            main:
+              image: nginx
+              imageTag: latest
+          autoCreatePdb: true
+          pdbConfig:
+            maxUnavailable: 1
+    asserts:
+      - matchSnapshot: {} 

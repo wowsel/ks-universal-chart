@@ -1,0 +1,34 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Testing Guidelines
+
+The chart includes comprehensive testing guidelines:
+
+## Test Categories
+
+- **Functional Tests**: Verify that resources are correctly generated
+- **Edge Case Tests**: Test boundary conditions and optional features
+- **Inheritance Tests**: Verify global settings inheritance
+- **Validation Tests**: Test validation function behavior
+- **Integration Tests**: Test interactions between components
+- **Upgrade Tests**: Verify upgrade paths
+
+## Testing Process
+
+1. **Template Rendering**: Use `helm template` to render with test values
+2. **Linting**: Use `helm lint` for structural validation
+3. **Unit Tests**: Use Helm's test framework for specific cases
+4. **Installation Tests**: Verify installation in test clusters
+
+## Common Test Cases
+
+- Basic resource generation
+- Auto-creation features
+- Inheritance from global settings
+- Validation of invalid configurations
+- Complex multi-container deployments
+
+See [TESTING.md](mdc:AI_HELPER/TESTING.md) for detailed testing guidelines and examples.

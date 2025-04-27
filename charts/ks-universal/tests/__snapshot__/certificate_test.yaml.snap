@@ -1,0 +1,59 @@
+should create a certificate when autoCreateCertificate is enabled:
+  1: |
+    replicas: 1
+    selector:
+      matchLabels:
+        app.kubernetes.io/component: test-app
+        app.kubernetes.io/instance: RELEASE-NAME
+        app.kubernetes.io/name: test-app
+    template:
+      metadata:
+        labels:
+          app.kubernetes.io/component: test-app
+          app.kubernetes.io/instance: RELEASE-NAME
+          app.kubernetes.io/managed-by: Helm
+          app.kubernetes.io/name: test-app
+          helm.sh/chart: ks-universal-0.2.14
+      spec:
+        containers:
+          - image: nginx:latest
+            name: main
+            ports:
+              - containerPort: 80
+                name: http
+                protocol: TCP
+  2: |
+    rules:
+      - host: test.example.org
+        http:
+          paths:
+            - backend:
+                service:
+                  name: test-app
+                  port:
+                    name: http
+              path: /
+              pathType: Prefix
+      - host: example.com
+        http:
+          paths:
+            - backend:
+                service:
+                  name: test-app
+                  port:
+                    name: http
+              path: /
+              pathType: Prefix
+    tls:
+      - hosts:
+          - test.example.org
+          - example.com
+        secretName: test-app-tls
+  3: |
+    dnsNames:
+      - test.example.org
+      - example.com
+    issuerRef:
+      kind: ClusterIssuer
+      name: letsencrypt-prod
+    secretName: test-app-tls

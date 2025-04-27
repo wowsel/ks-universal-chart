@@ -2,6 +2,10 @@
 
 > Universal Helm chart for deploying any type of application to Kubernetes with batteries included
 
+> ⚠️ **IMPORTANT: DEVELOPMENT STATUS** ⚠️
+> 
+> This Helm chart is currently under active development. Backward compatibility between versions is not guaranteed. For production use, we recommend creating a fork of this chart to ensure stability. Please be aware that breaking changes may occur between releases.
+
 [![Helm Version](https://img.shields.io/badge/helm-v3-blue)](https://helm.sh)
 [![Kubernetes Version](https://img.shields.io/badge/kubernetes-%3E%3D%201.19-blue)](https://kubernetes.io)
 [![License](https://img.shields.io/badge/license-Apache%202.0-green)](LICENSE)

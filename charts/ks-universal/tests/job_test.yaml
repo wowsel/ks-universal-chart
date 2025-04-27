@@ -1,0 +1,41 @@
+suite: test job
+templates:
+  - job.yaml
+tests:
+  - it: should create a job
+    set:
+      jobs:
+        test-migration:
+          parallelism: 1
+          completions: 1
+          backoffLimit: 3
+          containers:
+            migration:
+              image: migration-tool
+              imageTag: "1.0.0"
+              command: 
+                - /bin/sh
+                - -c
+                - migrate.sh
+              env:
+                - name: DB_URL
+                  value: postgres://user:password@db:5432/app
+    asserts:
+      - isKind:
+          of: Job
+      - isAPIVersion:
+          of: batch/v1
+      - equal:
+          path: metadata.name
+          value: test-migration
+      - equal:
+          path: spec.parallelism
+          value: 1
+      - equal:
+          path: spec.completions
+          value: 1
+      - equal:
+          path: spec.backoffLimit
+          value: 3
+      - matchSnapshot:
+          path: spec.template.spec 

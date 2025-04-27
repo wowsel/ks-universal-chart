@@ -1,0 +1,14 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Chart Structure
+
+The chart follows a standard Helm structure with enhanced capabilities:
+
+- [charts/ks-universal/Chart.yaml](mdc:charts/ks-universal/Chart.yaml) - Chart metadata
+- [charts/ks-universal/values.yaml](mdc:charts/ks-universal/values.yaml) - Default values
+- [charts/ks-universal/values-example.yaml](mdc:charts/ks-universal/values-example.yaml) - Example configuration
+- [charts/ks-universal/templates/](mdc:charts/ks-universal/templates/) - Kubernetes templates
+- [charts/ks-universal/tests/](mdc:charts/ks-universal/tests/) - Chart tests

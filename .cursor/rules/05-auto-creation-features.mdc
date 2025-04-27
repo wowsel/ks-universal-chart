@@ -1,0 +1,49 @@
+---
+description: 
+globs: 
+alwaysApply: false
+---
+# Auto-Creation Features
+
+The chart supports automatic creation of related resources:
+
+- `autoCreateService` - Creates Service based on container ports
+- `autoCreateIngress` - Creates Ingress with optional SSL
+- `autoCreateCertificate` - Manages SSL certificates via cert-manager
+- `autoCreateServiceMonitor` - Creates Prometheus ServiceMonitor
+- `autoCreatePdb` - Creates PodDisruptionBudget
+- `autoCreateServiceAccount` - Creates dedicated ServiceAccount
+- `autoCreateSoftAntiAffinity` - Adds soft anti-affinity to distribute pods
+
+## Implementation Details
+
+- Services are created based on container port definitions
+- Ingress hostnames can be constructed from subdomain and global domain
+- ServiceMonitors target ports with metrics in their name
+- Certificates are created for ingress hosts
+- PDBs are created with deployment selector labels
+- Anti-affinity is added to distribute pods across nodes
+
+## Configuration Examples
+
+```yaml
+deployments:
+  app:
+    # Enable auto-creation features
+    autoCreateService: true
+    autoCreateIngress: true
+    autoCreateServiceMonitor: true
+    
+    # Configure auto-created resources
+    serviceType: ClusterIP
+    ingress:
+      hosts:
+        - subdomain: "app"
+          paths:
+            - path: "/"
+              pathType: "Prefix"
+    serviceMonitor:
+      interval: "15s"
+```
+
+See the [VALUES_SCHEMA.md](mdc:AI_HELPER/VALUES_SCHEMA.md) for detailed configuration options.

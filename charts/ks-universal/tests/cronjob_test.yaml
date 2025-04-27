@@ -1,0 +1,33 @@
+suite: test cronjob
+templates:
+  - cronjob.yaml
+tests:
+  - it: should create a cronjob
+    set:
+      cronJobs:
+        test-backup:
+          schedule: "0 2 * * *"
+          containers:
+            backup:
+              image: backup-tool
+              imageTag: "1.0.0"
+              command: 
+                - /bin/sh
+                - -c
+                - backup.sh
+              env:
+                - name: BACKUP_DIR
+                  value: /backup
+    asserts:
+      - isKind:
+          of: CronJob
+      - isAPIVersion:
+          of: batch/v1
+      - equal:
+          path: metadata.name
+          value: test-backup
+      - equal:
+          path: spec.schedule
+          value: "0 2 * * *"
+      - matchSnapshot:
+          path: spec.jobTemplate.spec.template.spec 

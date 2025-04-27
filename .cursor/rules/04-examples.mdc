@@ -1,0 +1,13 @@
+---
+description:
+globs:
+alwaysApply: false
+---
+# Example Configurations
+
+The chart includes several example configurations for different use cases:
+
+- [examples/simple-web-app/](mdc:examples/simple-web-app/) - Basic web application deployment
+- [examples/database-app/](mdc:examples/database-app/) - Application with database configuration
+- [examples/microservices/](mdc:examples/microservices/) - Multi-service application architecture
+- [examples/monitoring/](mdc:examples/monitoring/) - Application with monitoring configurations

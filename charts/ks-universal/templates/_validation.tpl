@@ -444,7 +444,7 @@ DexAuthenticator validation
 {{- if $config.autoCreateCertificate -}}
 {{- if $config.certificate -}}
 {{- if not (kindIs "map" $config.certificate) -}}
-{{- fail (printf "DexAuthenticator %s: certificate must be a map" $name) -}}
+{{- fail "Global DexAuthenticator: certificate must be a map" -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}
@@ -712,20 +712,26 @@ CronJob validation
 
 {{/* Validate parallelism if provided */}}
 {{- if $cronJobConfig.parallelism -}}
-{{- if not (kindIs "int" $cronJobConfig.parallelism) -}}
-{{- fail (printf "CronJob %s: parallelism must be an integer" $cronJobName) -}}
+{{- $parallelism := 0 -}}
+{{- if kindIs "string" $cronJobConfig.parallelism -}}
+  {{- $parallelism = int $cronJobConfig.parallelism -}}
+{{- else -}}
+  {{- $parallelism = $cronJobConfig.parallelism -}}
 {{- end -}}
-{{- if le $cronJobConfig.parallelism 0 -}}
+{{- if and $parallelism (le ($parallelism | int) 0) -}}
 {{- fail (printf "CronJob %s: parallelism must be greater than 0" $cronJobName) -}}
 {{- end -}}
 {{- end -}}
 
 {{/* Validate completions if provided */}}
 {{- if $cronJobConfig.completions -}}
-{{- if not (kindIs "int" $cronJobConfig.completions) -}}
-{{- fail (printf "CronJob %s: completions must be an integer" $cronJobName) -}}
+{{- $completions := 0 -}}
+{{- if kindIs "string" $cronJobConfig.completions -}}
+  {{- $completions = int $cronJobConfig.completions -}}
+{{- else -}}
+  {{- $completions = $cronJobConfig.completions -}}
 {{- end -}}
-{{- if le $cronJobConfig.completions 0 -}}
+{{- if and $completions (le ($completions | int) 0) -}}
 {{- fail (printf "CronJob %s: completions must be greater than 0" $cronJobName) -}}
 {{- end -}}
 {{- end -}}
@@ -753,20 +759,26 @@ Job validation
 
 {{/* Validate parallelism if provided */}}
 {{- if $jobConfig.parallelism -}}
-{{- if not (kindIs "int" $jobConfig.parallelism) -}}
-{{- fail (printf "Job %s: parallelism must be an integer" $jobName) -}}
+{{- $parallelism := 0 -}}
+{{- if kindIs "string" $jobConfig.parallelism -}}
+  {{- $parallelism = int $jobConfig.parallelism -}}
+{{- else -}}
+  {{- $parallelism = $jobConfig.parallelism -}}
 {{- end -}}
-{{- if le $jobConfig.parallelism 0 -}}
+{{- if and $parallelism (le ($parallelism | int) 0) -}}
 {{- fail (printf "Job %s: parallelism must be greater than 0" $jobName) -}}
 {{- end -}}
 {{- end -}}
 
 {{/* Validate completions if provided */}}
 {{- if $jobConfig.completions -}}
-{{- if not (kindIs "int" $jobConfig.completions) -}}
-{{- fail (printf "Job %s: completions must be an integer" $jobName) -}}
+{{- $completions := 0 -}}
+{{- if kindIs "string" $jobConfig.completions -}}
+  {{- $completions = int $jobConfig.completions -}}
+{{- else -}}
+  {{- $completions = $jobConfig.completions -}}
 {{- end -}}
-{{- if le $jobConfig.completions 0 -}}
+{{- if and $completions (le ($completions | int) 0) -}}
 {{- fail (printf "Job %s: completions must be greater than 0" $jobName) -}}
 {{- end -}}
 {{- end -}}

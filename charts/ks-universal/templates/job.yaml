@@ -19,10 +19,10 @@ spec:
   backoffLimit: {{ $defaultedConfig.backoffLimit }}
   {{- end }}
   {{- if $defaultedConfig.parallelism }}
-  parallelism: {{ $defaultedConfig.parallelism }}
+  parallelism: {{ int $defaultedConfig.parallelism }}
   {{- end }}
   {{- if $defaultedConfig.completions }}
-  completions: {{ $defaultedConfig.completions }}
+  completions: {{ int $defaultedConfig.completions }}
   {{- end }}
   template:
     metadata:
@@ -81,10 +81,10 @@ metadata:
 spec:
   backoffLimit: {{ $deploymentConfig.migrations.backoffLimit | default 1 }}
   {{- if $deploymentConfig.migrations.parallelism }}
-  parallelism: {{ $deploymentConfig.migrations.parallelism }}
+  parallelism: {{ int $deploymentConfig.migrations.parallelism }}
   {{- end }}
   {{- if $deploymentConfig.migrations.completions }}
-  completions: {{ $deploymentConfig.migrations.completions }}
+  completions: {{ int $deploymentConfig.migrations.completions }}
   {{- end }}
   template:
     metadata:
