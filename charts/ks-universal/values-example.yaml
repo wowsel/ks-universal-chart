@@ -50,6 +50,7 @@ generic:
     scrapeTimeout: 10s   # Maximum time for each scrape operation
 
   # Additional image pull secrets for private registries
+  # Used by all deployments, jobs, and cronjobs
   extraImagePullSecrets:
     - name: registry-secret  # Name of the Kubernetes secret containing registry credentials
 

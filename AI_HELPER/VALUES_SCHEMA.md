@@ -90,7 +90,7 @@ generic:
     namespace: "default"
     name: "dex"
   
-  # Extra pull secrets
+  # Extra pull secrets - applied to all deployments, jobs, and cronjobs
   extraImagePullSecrets:
     - name: "registry-credentials"
 ```
