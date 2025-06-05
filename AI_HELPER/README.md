@@ -125,7 +125,7 @@ generic:
     namespace: "default"
     name: "dex"
   
-  # Extra pull secrets
+  # Extra pull secrets for all deployments, jobs, and cronjobs
   extraImagePullSecrets: []
 
 # Secret references that can be included in containers

@@ -86,7 +86,7 @@ deploymentsGeneral:
 
 # Generic settings
 generic:
-  extraImagePullSecrets: []  # Global image pull secrets
+  extraImagePullSecrets: []  # Global image pull secrets for all deployments, jobs, and cronjobs
   ingressesGeneral: {}       # Global ingress configurations
   serviceMonitorGeneral: {}  # Global ServiceMonitor settings
   dexAuthenticatorGeneral: {}  # Global DexAuthenticator settings
@@ -105,7 +105,7 @@ deployments:
             protocol: TCP
         resources: {}     # Resource requests and limits
         probes: {}       # Container probes
-        env: []          # Environment variables
+        env: []          # Environment variables (supports Go template)
         envFrom: []      # Environment from ConfigMaps/Secrets
         volumeMounts: [] # Volume mounts
         lifecycle: {}    # Container lifecycle hooks
@@ -274,6 +274,26 @@ deployments:
       enabled: true
       args: ["migrate", "up"]
 ```
+
+### 🎨 Go Template Support
+
+The chart supports Go template expressions in various fields for dynamic values:
+
+```yaml
+deployments:
+  my-app:
+    containers:
+      main:
+        image: '{{ .Values.global.registry }}/my-app'
+        imageTag: '{{ .Chart.Version }}'
+        env:
+          - name: BUILD_TIME
+            value: '{{ now | unixEpoch }}'
+          - name: RELEASE_NAME  
+            value: '{{ .Release.Name }}'
+```
+
+Supported in: `image`, `imageTag`, and `env` values.
 
 ## 📚 Documentation
 

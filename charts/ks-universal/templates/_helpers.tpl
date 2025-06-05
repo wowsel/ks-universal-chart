@@ -371,7 +371,7 @@ env:
   {{- range $envVars }}
   - name: {{ .name }}
     {{- if .value }}
-    value: {{ .value | quote }}
+    value: {{ include "ks-universal.tplValue" (dict "value" .value "context" $root) | quote }}
     {{- else if .valueFrom }}
     valueFrom:
       {{- toYaml .valueFrom | nindent 6 }}
