@@ -126,6 +126,40 @@ Service labels
 {{- toYaml $result }}
 {{- end }}
 
+{{/* Helper for job defaults (excludes probes which are not supported in Jobs/CronJobs) */}}
+{{- define "ks-universal.jobDefaults" -}}
+{{- $deployment := .deployment }}
+{{- $general := .general }}
+{{- $result := deepCopy $deployment }}
+{{- if $general }}
+  {{- if $general.securityContext }}
+    {{- $result = merge $result (dict "securityContext" $general.securityContext) }}
+  {{- end }}
+  {{- if $general.nodeSelector }}
+    {{- $result = merge $result (dict "nodeSelector" $general.nodeSelector) }}
+  {{- end }}
+  {{- if $general.tolerations }}
+    {{- $result = merge $result (dict "tolerations" $general.tolerations) }}
+  {{- end }}
+  {{- if $general.affinity }}
+    {{- $result = merge $result (dict "affinity" $general.affinity) }}
+  {{- end }}
+  {{/* Intentionally skip probes - they are not supported in Jobs/CronJobs */}}
+  {{/* Strategy is also not applicable for Jobs/CronJobs, so skip it */}}
+  {{- if $general.parallelism }}
+    {{- if not $result.parallelism }}
+      {{- $result = merge $result (dict "parallelism" (int $general.parallelism)) }}
+    {{- end }}
+  {{- end }}
+  {{- if $general.completions }}
+    {{- if not $result.completions }}
+      {{- $result = merge $result (dict "completions" (int $general.completions)) }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+{{- toYaml $result }}
+{{- end }}
+
 {{- define "ks-universal.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
@@ -727,4 +761,20 @@ spec:
 {{- end -}}
 
 {{- toYaml $result -}}
+{{- end -}}
+
+{{/* Helper для поиска порта metrics */}}
+{{- define "ks-universal.findMetricsPort" -}}
+{{- $containers := .containers -}}
+{{- $metricsPort := "http" -}}
+{{- range $containerName, $container := $containers -}}
+  {{- if $container.ports -}}
+    {{- range $portName, $port := $container.ports -}}
+      {{- if eq $portName "http-metrics" -}}
+        {{- $metricsPort = $portName -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+{{- $metricsPort -}}
 {{- end -}}

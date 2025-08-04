@@ -1,6 +1,6 @@
 {{- include "ks-universal.validate" . -}}
 {{- range $jobName, $jobConfig := .Values.jobs }}
-{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+{{- $defaultedConfig := include "ks-universal.jobDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -66,7 +66,7 @@ spec:
 {{/* Обработка миграций */}}
 {{- range $deploymentName, $deploymentConfig := .Values.deployments }}
 {{- if and $deploymentConfig.migrations (hasKey $deploymentConfig.migrations "enabled") $deploymentConfig.migrations.enabled }}
-{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+{{- $defaultedConfig := include "ks-universal.jobDefaults" (dict "deployment" $deploymentConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
 ---
 apiVersion: batch/v1
 kind: Job

@@ -1,6 +1,6 @@
 {{- include "ks-universal.validate" . -}}
 {{- range $jobName, $jobConfig := .Values.cronJobs }}
-{{- $defaultedConfig := include "ks-universal.deploymentDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
+{{- $defaultedConfig := include "ks-universal.jobDefaults" (dict "deployment" $jobConfig "general" $.Values.deploymentsGeneral) | fromYaml }}
 apiVersion: batch/v1
 kind: CronJob
 metadata:
