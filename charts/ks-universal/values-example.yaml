@@ -34,6 +34,9 @@ deploymentsGeneral:
       initialDelaySeconds: 5   # Time to wait before first probe
       periodSeconds: 10        # How often to perform the probe
 
+  # Auto-creation settings applied to all deployments
+  autoCreateSoftAntiAffinity: true  # Automatically create soft anti-affinity rules
+
 # Generic configurations applied across all resource types
 generic:
   # Global ingress configurations
@@ -96,6 +99,13 @@ configs:
         features:
           feature1: true
           feature2: false
+      app.properties: |
+        property1=value1
+        property2=value2
+      API_ENDPOINT: "https://api.example.com"
+    # Optional: binary data (base64 encoded)
+    binaryData:
+      logo.png: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8/5+hHgAHggJ/PchI7wAAAABJRU5ErkJggg=="
 
   # Application secrets
   app-secrets:
@@ -103,6 +113,14 @@ configs:
     data:
       API_KEY: "your-api-key"           # Will be base64 encoded automatically
       DB_PASSWORD: "your-db-password"    # Will be base64 encoded automatically
+      # Multi-line secret
+      private-key.pem: |
+        -----BEGIN PRIVATE KEY-----
+        MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC7...
+        -----END PRIVATE KEY-----
+    # Optional: binary data for secrets (base64 encoded)
+    binaryData:
+      certificate.p12: "MIIKCAIBAzCCCcMGCSqGSIb3DQEHAaCCCbQEggmwMIIJrDCCBX..."
 
 # Secret reference groups for reuse across deployments
 secretRefs:
@@ -152,6 +170,12 @@ deployments:
     certificate:
       clusterIssuer: letsencrypt-prod  # cert-manager cluster issuer
 
+    # Database migrations configuration
+    migrations:
+      enabled: true                    # Enable database migrations
+      backoffLimit: 1                  # Number of retries before considering failed
+      args: ["migrate", "up"]          # Migration command arguments
+
     # Container specifications
     containers:
       main:
@@ -162,9 +186,11 @@ deployments:
         ports:
           http:
             containerPort: 8080    # Main application port
+            servicePort: 80        # Service port (different from container port)
             protocol: TCP         # Protocol (TCP/UDP)
           http-metrics:
             containerPort: 9090   # Prometheus metrics port
+            servicePort: 9090     # Service port for metrics
 
         # Environment variables
         env:
@@ -214,8 +240,11 @@ deployments:
           paths:
             - path: /
               pathType: Prefix
+      # Optional: DexAuthenticator integration
+      dexAuthenticator:
+        enabled: true
 
-    # Horizontal Pod Autoscaling configuration
+    # Horizontal Pod Autoscaling configuration (embedded in deployment)
     hpa:
       minReplicas: 3        # Minimum number of replicas
       maxReplicas: 10       # Maximum number of replicas
@@ -231,6 +260,17 @@ deployments:
 cronJobs:
   backup:
     schedule: "0 0 * * *"    # Run daily at midnight (cron format)
+    timezone: "America/New_York"  # Optional: timezone for schedule (requires Kubernetes 1.24+)
+    
+    # Optional: CronJob specific settings
+    concurrencyPolicy: Forbid  # Forbid concurrent executions
+    failedJobsHistoryLimit: 1  # Keep only 1 failed job
+    successfulJobsHistoryLimit: 3  # Keep 3 successful jobs
+    
+    # Job template settings
+    activeDeadlineSeconds: 3600  # 1 hour deadline
+    backoffLimit: 2              # Retry twice on failure
+    
     containers:
       main:
         image: backup-job
@@ -239,13 +279,39 @@ cronJobs:
           requests:
             cpu: 100m
             memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         env:
           - name: BACKUP_PATH
             value: /backup
+        volumeMounts:
+          - name: backup-storage
+            mountPath: /backup
+    
+    # Pod configuration
+    volumes:
+      - name: backup-storage
+        persistentVolumeClaim:
+          claimName: backup-pvc
+    restartPolicy: OnFailure
+    
+    # Optional: annotations
+    annotations:
+      description: "Daily database backup"
+    podAnnotations:
+      backup.io/type: "database"
 
 # One-time jobs (Jobs)
 jobs:
   db-migration:
+    # Job settings
+    parallelism: 1                   # How many pods to run in parallel
+    completions: 1                   # How many successful completions are needed
+    backoffLimit: 3                  # Number of retries before considering failed
+    activeDeadlineSeconds: 1800      # 30 minutes deadline
+    ttlSecondsAfterFinished: 600     # Clean up job 10 minutes after completion
+    
     containers:
       main:
         image: migration-job
@@ -254,12 +320,32 @@ jobs:
           requests:
             cpu: 100m
             memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
         env:
           - name: DB_PASSWORD
             valueFrom:
               secretKeyRef:
                 name: app-secrets
                 key: DB_PASSWORD
+          - name: MIGRATION_TYPE
+            value: "schema"
+        volumeMounts:
+          - name: migration-scripts
+            mountPath: /scripts
+            readOnly: true
+    
+    # Pod configuration
+    volumes:
+      - name: migration-scripts
+        configMap:
+          name: migration-config
+    restartPolicy: OnFailure
+    
+    # Optional: annotations
+    annotations:
+      job.io/type: "database-migration"
 
 # Standalone services
 services:
@@ -277,32 +363,47 @@ persistentVolumeClaims:
       - ReadWriteOnce        # Access mode (ReadWriteOnce, ReadOnlyMany, ReadWriteMany)
     storageClassName: standard  # Storage class to use
     size: 10Gi              # Size of the volume
+  
+  # Backup storage for CronJob
+  backup-pvc:
+    accessModes:
+      - ReadWriteOnce
+    storageClassName: standard
+    size: 50Gi
 
 # Standalone ingresses
 ingresses:
-  epg:
+  api-gateway:
     hosts:
-      - host: myhost.com
+      - host: myapi.example.com
         paths:
-          - path: /handler/health
-            pathType: Exact
-            service: handler
+          - path: /api/v1
+            pathType: Prefix
+            service: backend-api
             portName: http
-      - subdomain: main  # Will be main.example.com if domain is set in generic.ingressesGeneral
+      - subdomain: admin  # Will be admin.example.com if domain is set in generic.ingressesGeneral
         paths:
-          - path: /main/health
-            pathType: Exact
-            service: main
+          - path: /admin
+            pathType: Prefix
+            service: admin-service
             portName: http
       - host: ""  # Will use domain from generic.ingressesGeneral
         paths:
-          - path: /main2/health
+          - path: /health
             pathType: Exact
-            service: main2
+            service: health-service
             portName: http
+    tls:
+      - secretName: api-gateway-tls
+        hosts:
+          - myapi.example.com
+          - admin.example.com
+    # Optional: DexAuthenticator integration
+    dexAuthenticator:
+      enabled: true
 
-# Example with DexAuthenticator for authentication
-app-with-auth:
+# Example: Ingress with DexAuthenticator authentication
+secure-app:
   hosts:
     - host: secure-app.example.com
       paths:
