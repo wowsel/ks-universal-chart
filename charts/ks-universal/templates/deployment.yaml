@@ -13,7 +13,7 @@ metadata:
     {{- toYaml $defaultedConfig.annotations | nindent 4 }}
   {{- end }}
 spec:
-  {{- if and (not $deploymentConfig.hpa) $defaultedConfig.replicas }}
+  {{- if and (not $deploymentConfig.hpa) (hasKey $defaultedConfig "replicas") }}
   replicas: {{ $defaultedConfig.replicas }}
   {{- end }}
   {{- if $defaultedConfig.strategy }}
