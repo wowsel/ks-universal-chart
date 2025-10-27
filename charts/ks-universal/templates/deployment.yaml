@@ -43,6 +43,9 @@ spec:
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
+      {{- if $defaultedConfig.priorityClassName }}
+      priorityClassName: {{ $defaultedConfig.priorityClassName }}
+      {{- end }}
       containers:
       {{- include "ks-universal.containers" (dict "root" $ "containers" $defaultedConfig.containers) | nindent 8 | trimPrefix "\n" }}
       {{- if $defaultedConfig.volumes }}

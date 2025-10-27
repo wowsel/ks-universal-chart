@@ -12,6 +12,9 @@ deploymentsGeneral:
     runAsNonRoot: true    # Force the container to run as non-root user
     runAsUser: 1000       # Specify the user ID to run the container
 
+  # Priority class for pod scheduling (optional)
+  # priorityClassName: system-cluster-critical  # Use for critical system workloads
+
   # Node selection criteria for pod scheduling
   nodeSelector:
     kubernetes.io/os: linux  # Schedule pods only on Linux nodes
@@ -152,8 +155,11 @@ deployments:
   backend-api:
     strategy:
       type: Recreate    # Use Recreate strategy instead of default RollingUpdate
-    
+
     replicas: 3         # Number of pod replicas to maintain
+
+    # Override global priority class for this critical service
+    priorityClassName: high-priority
     
     # Enable automatic resource creation
     autoCreateService: true           # Create a Service automatically
@@ -261,7 +267,10 @@ cronJobs:
   backup:
     schedule: "0 0 * * *"    # Run daily at midnight (cron format)
     timezone: "America/New_York"  # Optional: timezone for schedule (requires Kubernetes 1.24+)
-    
+
+    # Optional: Priority class for the backup job
+    # priorityClassName: low-priority
+
     # Optional: CronJob specific settings
     concurrencyPolicy: Forbid  # Forbid concurrent executions
     failedJobsHistoryLimit: 1  # Keep only 1 failed job
@@ -311,6 +320,9 @@ jobs:
     backoffLimit: 3                  # Number of retries before considering failed
     activeDeadlineSeconds: 1800      # 30 minutes deadline
     ttlSecondsAfterFinished: 600     # Clean up job 10 minutes after completion
+
+    # Optional: Priority class for the migration job
+    # priorityClassName: high-priority
     
     containers:
       main:

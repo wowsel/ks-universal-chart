@@ -42,6 +42,9 @@ spec:
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
       {{- end }}
+      {{- if $defaultedConfig.priorityClassName }}
+      priorityClassName: {{ $defaultedConfig.priorityClassName }}
+      {{- end }}
       {{- if $defaultedConfig.nodeSelector }}
       nodeSelector:
         {{- toYaml $defaultedConfig.nodeSelector | nindent 8 }}
@@ -99,6 +102,9 @@ spec:
       {{- if $defaultedConfig.securityContext }}
       securityContext:
         {{- toYaml $defaultedConfig.securityContext | nindent 8 }}
+      {{- end }}
+      {{- if $defaultedConfig.priorityClassName }}
+      priorityClassName: {{ $defaultedConfig.priorityClassName }}
       {{- end }}
       {{- if $defaultedConfig.nodeSelector }}
       nodeSelector:

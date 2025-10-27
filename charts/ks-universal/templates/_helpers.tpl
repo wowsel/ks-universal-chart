@@ -91,6 +91,11 @@ Service labels
   {{- if $general.securityContext }}
     {{- $result = merge $result (dict "securityContext" $general.securityContext) }}
   {{- end }}
+  {{- if $general.priorityClassName }}
+    {{- if not $result.priorityClassName }}
+      {{- $result = merge $result (dict "priorityClassName" $general.priorityClassName) }}
+    {{- end }}
+  {{- end }}
   {{- if $general.nodeSelector }}
     {{- $result = merge $result (dict "nodeSelector" $general.nodeSelector) }}
   {{- end }}

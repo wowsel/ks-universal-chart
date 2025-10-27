@@ -70,6 +70,9 @@ spec:
           securityContext:
             {{- toYaml $defaultedConfig.securityContext | nindent 12 }}
           {{- end }}
+          {{- if $defaultedConfig.priorityClassName }}
+          priorityClassName: {{ $defaultedConfig.priorityClassName }}
+          {{- end }}
           {{- if $defaultedConfig.nodeSelector }}
           nodeSelector:
             {{- toYaml $defaultedConfig.nodeSelector | nindent 12 }}

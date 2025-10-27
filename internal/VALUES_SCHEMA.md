@@ -51,26 +51,27 @@ hpas:
 The `generic` section contains global settings that apply to multiple resources:
 
 ```yaml
+# Global defaults for all deployments
+deploymentsGeneral:
+  securityContext: {}
+  priorityClassName: ""  # Default priority class for all deployments
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  probes:
+    livenessProbe: {}
+    readinessProbe: {}
+    startupProbe: {}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  parallelism: 1    # For Job resources
+  completions: 1    # For Job resources
+  autoCreateSoftAntiAffinity: true
+
 generic:
-  # General settings for deployments
-  deploymentsGeneral:
-    securityContext: {}
-    nodeSelector: {}
-    tolerations: []
-    affinity: {}
-    probes:
-      livenessProbe: {}
-      readinessProbe: {}
-      startupProbe: {}
-    strategy:
-      type: RollingUpdate
-      rollingUpdate:
-        maxUnavailable: 1
-        maxSurge: 1
-    parallelism: 1    # For Job resources
-    completions: 1    # For Job resources
-    autoCreateSoftAntiAffinity: true
-  
   # General settings for ingress resources
   ingressesGeneral:
     annotations: {}
@@ -235,7 +236,10 @@ deployments:
     # Pod security context
     securityContext:
       fsGroup: 2000
-    
+
+    # Priority class name
+    priorityClassName: high-priority
+
     # Node selector
     nodeSelector:
       kubernetes.io/os: linux
@@ -397,6 +401,7 @@ cronJobs:
     
     # Pod-level configurations
     volumes: []
+    priorityClassName: high-priority
     nodeSelector: {}
     tolerations: []
     affinity: {}
@@ -430,6 +435,7 @@ jobs:
     
     # Pod-level configurations
     volumes: []
+    priorityClassName: high-priority
     nodeSelector: {}
     tolerations: []
     affinity: {}

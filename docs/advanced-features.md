@@ -20,6 +20,7 @@ This guide covers advanced features and patterns available in the ks-universal c
 deploymentsGeneral:
   securityContext:
     runAsNonRoot: true
+  priorityClassName: system-cluster-critical
   probes:
     livenessProbe:
       httpGet:
@@ -189,7 +190,10 @@ deployments:
       runAsNonRoot: true
       seccompProfile:
         type: RuntimeDefault
-    
+
+    # Priority class for critical workloads
+    priorityClassName: high-priority
+
     containers:
       main:
         securityContext:
