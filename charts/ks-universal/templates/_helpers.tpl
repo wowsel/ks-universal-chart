@@ -472,15 +472,6 @@ metadata:
 {{- with $defaultedIngress.annotations }}
 {{ toYaml . | nindent 4 | trimPrefix "\n"}}
 {{- end }}
-{{- if $deploymentConfig.autoCreateCertificate }}
-{{- if and $deploymentConfig.certificate $deploymentConfig.certificate.clusterIssuer }}
-    cert-manager.io/cluster-issuer: {{ $deploymentConfig.certificate.clusterIssuer | quote }}
-{{- else if and $deploymentConfig.certificate $deploymentConfig.certificate.issuer }}
-    cert-manager.io/issuer: {{ $deploymentConfig.certificate.issuer | quote }}
-{{- else }}
-    cert-manager.io/cluster-issuer: "letsencrypt"
-{{- end }}
-{{- end }}
 {{- /* Add DexAuthenticator annotations if enabled */ -}}
 {{- if and $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
     {{ include "ks-universal.dexAnnotations" (dict "root" $root "namespace" ($deploymentConfig.namespace | default $root.Release.Namespace)) | nindent 4 }}
