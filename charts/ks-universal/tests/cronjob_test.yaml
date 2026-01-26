@@ -30,4 +30,58 @@ tests:
           path: spec.schedule
           value: "0 2 * * *"
       - matchSnapshot:
-          path: spec.jobTemplate.spec.template.spec 
+          path: spec.jobTemplate.spec.template.spec
+
+  - it: should use custom serviceAccountName when specified per-cronjob
+    set:
+      cronJobs:
+        test-backup:
+          schedule: "0 2 * * *"
+          serviceAccountName: backup-sa
+          containers:
+            backup:
+              image: backup-tool
+              imageTag: "1.0.0"
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: backup-sa
+
+  - it: should use global serviceAccountName for cronjob
+    set:
+      generic:
+        serviceAccountName: global-sa
+      cronJobs:
+        test-backup:
+          schedule: "0 2 * * *"
+          containers:
+            backup:
+              image: backup-tool
+              imageTag: "1.0.0"
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: global-sa
+
+  - it: should override global serviceAccountName with per-cronjob serviceAccountName
+    set:
+      generic:
+        serviceAccountName: global-sa
+      cronJobs:
+        test-backup:
+          schedule: "0 2 * * *"
+          serviceAccountName: override-sa
+          containers:
+            backup:
+              image: backup-tool
+              imageTag: "1.0.0"
+    asserts:
+      - isKind:
+          of: CronJob
+      - equal:
+          path: spec.jobTemplate.spec.template.spec.serviceAccountName
+          value: override-sa

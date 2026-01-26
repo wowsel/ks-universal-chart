@@ -42,6 +42,10 @@ deploymentsGeneral:
 
 # Generic configurations applied across all resource types
 generic:
+  # Global ServiceAccount name for all deployments, jobs, and cronjobs
+  # This will be used if no per-resource serviceAccountName is specified
+  # serviceAccountName: global-service-account
+
   # Global ingress configurations
   ingressesGeneral:
     annotations:
@@ -160,6 +164,9 @@ deployments:
 
     # Override global priority class for this critical service
     priorityClassName: high-priority
+
+    # Custom ServiceAccount name for this deployment (overrides global generic.serviceAccountName)
+    # serviceAccountName: backend-api-sa
     
     # Enable automatic resource creation
     autoCreateService: true           # Create a Service automatically

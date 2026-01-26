@@ -34,6 +34,10 @@ spec:
       {{- end }}
     spec:
       restartPolicy: {{ $defaultedConfig.restartPolicy | default "Never" }}
+      {{- $shouldSetSA := include "ks-universal.shouldSetServiceAccountName" (dict "resourceConfig" $jobConfig "root" $) -}}
+      {{- if eq $shouldSetSA "true" }}
+      serviceAccountName: {{ include "ks-universal.serviceAccountName" (dict "resourceName" $jobName "resourceConfig" $jobConfig "root" $) }}
+      {{- end }}
       {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}
@@ -95,6 +99,10 @@ spec:
         {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" (printf "%s-migrations" $deploymentName)) | nindent 8 }}
     spec:
       restartPolicy: Never
+      {{- $shouldSetSA := include "ks-universal.shouldSetServiceAccountName" (dict "resourceConfig" $deploymentConfig "root" $) -}}
+      {{- if eq $shouldSetSA "true" }}
+      serviceAccountName: {{ include "ks-universal.serviceAccountName" (dict "resourceName" $deploymentName "resourceConfig" $deploymentConfig "root" $) }}
+      {{- end }}
       {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
       imagePullSecrets:
         {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 8 }}

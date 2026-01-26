@@ -32,8 +32,9 @@ spec:
         {{- toYaml $defaultedConfig.podAnnotations | nindent 8 }}
       {{- end }}
     spec:
-      {{- if or $deploymentConfig.serviceAccount $deploymentConfig.autoCreateServiceAccount }}
-      serviceAccountName: {{ $deploymentName }}
+      {{- $shouldSetSA := include "ks-universal.shouldSetServiceAccountName" (dict "resourceConfig" $deploymentConfig "root" $) -}}
+      {{- if eq $shouldSetSA "true" }}
+      serviceAccountName: {{ include "ks-universal.serviceAccountName" (dict "resourceName" $deploymentName "resourceConfig" $deploymentConfig "root" $) }}
       {{- end }}
       {{- if and $.Values.generic (hasKey $.Values.generic "extraImagePullSecrets") }}
       imagePullSecrets:

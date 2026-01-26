@@ -7,6 +7,9 @@ This guide covers advanced features and patterns available in the ks-universal c
 - [Complex Deployments](#complex-deployments)
 - [Advanced Scheduling](#advanced-scheduling)
 - [Security Features](#security-features)
+  - [Service Account Configuration](#service-account-configuration)
+  - [Pod Security Context](#pod-security-context)
+  - [Network Policies](#network-policies)
 - [Resource Management](#resource-management)
 - [Advanced Networking](#advanced-networking)
 
@@ -174,6 +177,55 @@ deployments:
 </details>
 
 ## 🔒 Security Features
+
+### Service Account Configuration
+
+<details>
+<summary>Custom ServiceAccount Name Configuration</summary>
+
+You can configure custom ServiceAccount names at two levels:
+
+**Global Configuration** - applies to all deployments, jobs, and cronjobs:
+```yaml
+generic:
+  serviceAccountName: global-service-account
+```
+
+**Per-Resource Configuration** - overrides global setting for specific resources:
+```yaml
+deployments:
+  my-app:
+    serviceAccountName: my-app-sa
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+
+jobs:
+  db-migration:
+    serviceAccountName: migration-sa
+    containers:
+      main:
+        image: migration-tool
+        imageTag: v1.0.0
+
+cronJobs:
+  backup:
+    schedule: "0 2 * * *"
+    serviceAccountName: backup-sa
+    containers:
+      main:
+        image: backup-tool
+        imageTag: v1.0.0
+```
+
+**Priority Order:**
+1. Per-resource `serviceAccountName` (highest priority)
+2. Global `generic.serviceAccountName`
+3. Resource name (default, only when `autoCreateServiceAccount` or `serviceAccount` is enabled)
+
+**Note:** Setting `serviceAccountName` allows you to use an existing ServiceAccount without creating a new one. If you want the chart to create a ServiceAccount for you, use `autoCreateServiceAccount: true` instead.
+</details>
 
 ### Pod Security Context
 

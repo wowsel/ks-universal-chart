@@ -62,6 +62,10 @@ spec:
           {{- end }}
         spec:
           restartPolicy: {{ $defaultedConfig.restartPolicy | default "Never" }}
+          {{- $shouldSetSA := include "ks-universal.shouldSetServiceAccountName" (dict "resourceConfig" $jobConfig "root" $) -}}
+          {{- if eq $shouldSetSA "true" }}
+          serviceAccountName: {{ include "ks-universal.serviceAccountName" (dict "resourceName" $jobName "resourceConfig" $jobConfig "root" $) }}
+          {{- end }}
           {{- if and $.Values.generic $.Values.generic.extraImagePullSecrets }}
           imagePullSecrets:
             {{- toYaml $.Values.generic.extraImagePullSecrets | nindent 12 }}

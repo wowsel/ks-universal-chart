@@ -38,4 +38,55 @@ tests:
           path: spec.backoffLimit
           value: 3
       - matchSnapshot:
-          path: spec.template.spec 
+          path: spec.template.spec
+
+  - it: should use custom serviceAccountName when specified per-job
+    set:
+      jobs:
+        test-migration:
+          serviceAccountName: migration-sa
+          containers:
+            migration:
+              image: migration-tool
+              imageTag: "1.0.0"
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: migration-sa
+
+  - it: should use global serviceAccountName for job
+    set:
+      generic:
+        serviceAccountName: global-sa
+      jobs:
+        test-migration:
+          containers:
+            migration:
+              image: migration-tool
+              imageTag: "1.0.0"
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: global-sa
+
+  - it: should override global serviceAccountName with per-job serviceAccountName
+    set:
+      generic:
+        serviceAccountName: global-sa
+      jobs:
+        test-migration:
+          serviceAccountName: override-sa
+          containers:
+            migration:
+              image: migration-tool
+              imageTag: "1.0.0"
+    asserts:
+      - isKind:
+          of: Job
+      - equal:
+          path: spec.template.spec.serviceAccountName
+          value: override-sa
