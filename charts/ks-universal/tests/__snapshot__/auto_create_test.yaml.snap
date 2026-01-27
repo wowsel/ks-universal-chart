@@ -81,7 +81,6 @@ should create auto-created resources without certificate:
     apiVersion: networking.k8s.io/v1
     kind: Ingress
     metadata:
-      annotations: null
       labels:
         app.kubernetes.io/component: test-app
         app.kubernetes.io/instance: RELEASE-NAME

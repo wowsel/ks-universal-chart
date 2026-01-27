@@ -7,8 +7,9 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $deploymentName) | nindent 4 }}
-    {{- with $deploymentConfig.serviceMonitor.labels }}
-    {{- toYaml . | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $ "resourceLabels" $deploymentConfig.serviceMonitor.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
     {{- end }}
 spec:
   selector:

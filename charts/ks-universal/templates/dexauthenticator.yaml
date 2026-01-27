@@ -16,6 +16,15 @@ metadata:
   namespace: {{ $dexGeneral.namespace | default $root.Release.Namespace }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $authName) | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $root "resourceLabels" $dexGeneral.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $root "resourceAnnotations" $dexGeneral.annotations) }}
+  {{- if $mergedAnnotations }}
+  annotations:
+    {{- $mergedAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   applicationDomain: {{ $dexGeneral.applicationDomain | required "global DexAuthenticator requires applicationDomain" }}
   applicationIngressClassName: {{ $dexGeneral.applicationIngressClassName | required "global DexAuthenticator requires applicationIngressClassName" | quote }}

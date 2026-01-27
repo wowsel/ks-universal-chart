@@ -6,9 +6,14 @@ metadata:
   name: {{ $pvcName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $pvcName) | nindent 4 }}
-  {{- with $pvcConfig.annotations }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $ "resourceLabels" $pvcConfig.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $ "resourceAnnotations" $pvcConfig.annotations) }}
+  {{- if $mergedAnnotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    {{- $mergedAnnotations | nindent 4 }}
   {{- end }}
 spec:
   accessModes:

@@ -6,6 +6,15 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $deploymentName) | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $ "resourceLabels" $deploymentConfig.hpa.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $ "resourceAnnotations" $deploymentConfig.hpa.annotations) }}
+  {{- if $mergedAnnotations }}
+  annotations:
+    {{- $mergedAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   scaleTargetRef:
     apiVersion: apps/v1

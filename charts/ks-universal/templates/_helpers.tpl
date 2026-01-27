@@ -127,6 +127,12 @@ Service labels
       {{- $result = merge $result (dict "completions" (int $general.completions)) }}
     {{- end }}
   {{- end }}
+  {{- if $general.labels }}
+    {{- $result = merge $result (dict "labels" (merge (default dict $deployment.labels) $general.labels)) }}
+  {{- end }}
+  {{- if $general.annotations }}
+    {{- $result = merge $result (dict "annotations" (merge (default dict $deployment.annotations) $general.annotations)) }}
+  {{- end }}
 {{- end }}
 {{- toYaml $result }}
 {{- end }}
@@ -468,14 +474,21 @@ metadata:
   name: {{ $deploymentName }}
   labels:
 {{ include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 | trimPrefix "\n"}}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $root "resourceLabels" $deploymentConfig.ingress.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $root "resourceAnnotations" $defaultedIngress.annotations) }}
+  {{- if or $mergedAnnotations (and $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled) }}
   annotations:
-{{- with $defaultedIngress.annotations }}
-{{ toYaml . | nindent 4 | trimPrefix "\n"}}
-{{- end }}
-{{- /* Add DexAuthenticator annotations if enabled */ -}}
-{{- if and $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
+    {{- if $mergedAnnotations }}
+    {{- $mergedAnnotations | nindent 4 }}
+    {{- end }}
+    {{- /* Add DexAuthenticator annotations if enabled */ -}}
+    {{- if and $deploymentConfig.ingress.dexAuthenticator $deploymentConfig.ingress.dexAuthenticator.enabled }}
     {{ include "ks-universal.dexAnnotations" (dict "root" $root "namespace" ($deploymentConfig.namespace | default $root.Release.Namespace)) | nindent 4 }}
-{{- end }}
+    {{- end }}
+  {{- end }}
 spec:
 {{- if $defaultedIngress.ingressClassName }}
   ingressClassName: {{ $defaultedIngress.ingressClassName }}
@@ -531,6 +544,15 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $root "resourceLabels" $deploymentConfig.pdbConfig.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $root "resourceAnnotations" $deploymentConfig.pdbConfig.annotations) }}
+  {{- if $mergedAnnotations }}
+  annotations:
+    {{- $mergedAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   selector:
     matchLabels:
@@ -580,15 +602,15 @@ spec:
   {{- $generalSettings = $root.Values.generic.serviceMonitorGeneral }}
 {{- end }}
 
-{{/* Merge labels from general and local configs */}}
-{{- $labels := dict }}
-{{/* First add general labels if they exist */}}
+{{/* Merge labels from global generic, serviceMonitorGeneral and local configs */}}
+{{- $smLocalLabels := dict }}
+{{/* First add serviceMonitorGeneral labels if they exist */}}
 {{- if $generalSettings.labels }}
-  {{- $labels = merge $labels $generalSettings.labels }}
+  {{- $smLocalLabels = merge $smLocalLabels $generalSettings.labels }}
 {{- end }}
 {{/* Then add local labels if they exist (they will override general ones) */}}
 {{- if and $deploymentConfig.serviceMonitor $deploymentConfig.serviceMonitor.labels }}
-  {{- $labels = merge $labels $deploymentConfig.serviceMonitor.labels }}
+  {{- $smLocalLabels = merge $smLocalLabels $deploymentConfig.serviceMonitor.labels }}
 {{- end }}
 
 apiVersion: monitoring.coreos.com/v1
@@ -597,8 +619,9 @@ metadata:
   name: {{ $deploymentName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $deploymentName) | nindent 4 }}
-    {{- if $labels }}
-    {{- toYaml $labels | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $root "resourceLabels" $smLocalLabels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
     {{- end }}
 spec:
   selector:
@@ -774,4 +797,38 @@ Returns true if:
 {{- end -}}
 
 {{- $result -}}
+{{- end -}}
+
+{{/*
+Merge global labels with resource-specific labels.
+Priority: resource labels > deploymentsGeneral labels > generic labels
+*/}}
+{{- define "ks-universal.mergeLabels" -}}
+{{- $root := .root -}}
+{{- $resourceLabels := .resourceLabels | default dict -}}
+{{- $globalLabels := dict -}}
+{{- if and $root.Values.generic $root.Values.generic.labels -}}
+  {{- $globalLabels = $root.Values.generic.labels -}}
+{{- end -}}
+{{- $merged := merge $resourceLabels $globalLabels -}}
+{{- if $merged }}
+{{- toYaml $merged }}
+{{- end -}}
+{{- end -}}
+
+{{/*
+Merge global annotations with resource-specific annotations.
+Priority: resource annotations > deploymentsGeneral annotations > generic annotations
+*/}}
+{{- define "ks-universal.mergeAnnotations" -}}
+{{- $root := .root -}}
+{{- $resourceAnnotations := .resourceAnnotations | default dict -}}
+{{- $globalAnnotations := dict -}}
+{{- if and $root.Values.generic $root.Values.generic.annotations -}}
+  {{- $globalAnnotations = $root.Values.generic.annotations -}}
+{{- end -}}
+{{- $merged := merge $resourceAnnotations $globalAnnotations -}}
+{{- if $merged }}
+{{- toYaml $merged }}
+{{- end -}}
 {{- end -}}

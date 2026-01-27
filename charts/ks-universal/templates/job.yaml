@@ -7,9 +7,14 @@ metadata:
   name: {{ $jobName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 4 }}
-  {{- with $defaultedConfig.annotations }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $ "resourceLabels" $defaultedConfig.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $ "resourceAnnotations" $defaultedConfig.annotations) }}
+  {{- if $mergedAnnotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
+    {{- $mergedAnnotations | nindent 4 }}
   {{- end }}
 spec:
   {{- if $defaultedConfig.activeDeadlineSeconds }}
@@ -28,9 +33,14 @@ spec:
     metadata:
       labels:
         {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $jobName) | nindent 8 }}
-      {{- with $defaultedConfig.podAnnotations }}
+        {{- $podExtraLabels := include "ks-universal.mergeLabels" (dict "root" $ "resourceLabels" $defaultedConfig.labels) }}
+        {{- if $podExtraLabels }}
+        {{- $podExtraLabels | nindent 8 }}
+        {{- end }}
+      {{- $podMergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $ "resourceAnnotations" $defaultedConfig.podAnnotations) }}
+      {{- if $podMergedAnnotations }}
       annotations:
-        {{- toYaml . | nindent 8 }}
+        {{- $podMergedAnnotations | nindent 8 }}
       {{- end }}
     spec:
       restartPolicy: {{ $defaultedConfig.restartPolicy | default "Never" }}

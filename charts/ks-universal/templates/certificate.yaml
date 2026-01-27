@@ -8,6 +8,15 @@ metadata:
   name: {{ $certificateName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $certificateName) | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $root "resourceLabels" $certificateConfig.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $root "resourceAnnotations" $certificateConfig.annotations) }}
+  {{- if $mergedAnnotations }}
+  annotations:
+    {{- $mergedAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   secretName: {{ printf "%s-tls" $certificateName }}
   issuerRef:

@@ -4,5 +4,7 @@ configs: {}
 services: {}
 ingresses: {}
 jobs: {}
-generic: {}
+generic:
+  labels: {}
+  annotations: {}
 secretRefs: {}

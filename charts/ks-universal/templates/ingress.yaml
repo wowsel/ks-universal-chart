@@ -8,13 +8,20 @@ metadata:
   name: {{ $ingressName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $.Chart "Release" $.Release "name" $ingressName) | nindent 4 }}
-  {{- with $defaultedIngress.annotations }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $ "resourceLabels" $ingressConfig.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $ "resourceAnnotations" $defaultedIngress.annotations) }}
+  {{- if or $mergedAnnotations (and $ingressConfig.dexAuthenticator $ingressConfig.dexAuthenticator.enabled) }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- /* Add DexAuthenticator annotations if enabled */ -}}
-  {{- if and $ingressConfig.dexAuthenticator $ingressConfig.dexAuthenticator.enabled }}
-  {{ include "ks-universal.dexAnnotations" (dict "root" $ "namespace" ($ingressConfig.namespace | default $.Release.Namespace)) | nindent 4 }}
+    {{- if $mergedAnnotations }}
+    {{- $mergedAnnotations | nindent 4 }}
+    {{- end }}
+    {{- /* Add DexAuthenticator annotations if enabled */ -}}
+    {{- if and $ingressConfig.dexAuthenticator $ingressConfig.dexAuthenticator.enabled }}
+    {{ include "ks-universal.dexAnnotations" (dict "root" $ "namespace" ($ingressConfig.namespace | default $.Release.Namespace)) | nindent 4 }}
+    {{- end }}
   {{- end }}
 spec:
   {{- if $defaultedIngress.ingressClassName }}

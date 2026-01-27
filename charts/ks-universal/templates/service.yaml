@@ -9,6 +9,15 @@ metadata:
   name: {{ $serviceName }}
   labels:
     {{- include "ks-universal.labels" (dict "Chart" $root.Chart "Release" $root.Release "name" $serviceName) | nindent 4 }}
+    {{- $extraLabels := include "ks-universal.mergeLabels" (dict "root" $root "resourceLabels" $serviceConfig.labels) }}
+    {{- if $extraLabels }}
+    {{- $extraLabels | nindent 4 }}
+    {{- end }}
+  {{- $mergedAnnotations := include "ks-universal.mergeAnnotations" (dict "root" $root "resourceAnnotations" $serviceConfig.annotations) }}
+  {{- if $mergedAnnotations }}
+  annotations:
+    {{- $mergedAnnotations | nindent 4 }}
+  {{- end }}
 spec:
   type: {{ $serviceConfig.type | default "ClusterIP" }}
   ports:
