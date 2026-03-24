@@ -106,6 +106,12 @@ imagePullSecrets:
 ---
 {{- end }}
 
+{{/* Auto-create HTTPRoute if enabled */}}
+{{- if $deploymentConfig.autoCreateHttpRoute }}
+{{- include "ks-universal.autoHttpRoute" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
+---
+{{- end }}
+
 {{/* Auto-create ServiceMonitor if enabled */}}
 {{- if $deploymentConfig.autoCreateServiceMonitor }}
 {{- include "ks-universal.serviceMonitor" (dict "deploymentName" $deploymentName "deploymentConfig" $deploymentConfig "root" $) }}
