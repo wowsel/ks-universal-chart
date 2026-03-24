@@ -101,7 +101,7 @@ Iterates over `httpRoutes` map following the same pattern as `ingress.yaml`:
 - `kind: HTTPRoute`
 - Metadata: name, merged labels via `ks-universal.labels` + `mergeLabels`, merged annotations via `mergeAnnotations`
 - `spec.parentRefs`: from route config, fallback to `httpRoutesGeneral.parentRefs`
-- `spec.hostnames`: array, each element resolved via `computedIngressHost` (host or subdomain+globalDomain)
+- `spec.hostnames`: the chart's input format (`hostnames[].host` / `hostnames[].subdomain`) is transformed to Gateway API's flat string array via `computedIngressHost`. Each element is resolved to a full hostname string.
 - `spec.rules`: rendered from values with matches and backendRefs
 
 ### New helpers in `_helpers.tpl`
@@ -114,7 +114,7 @@ Iterates over `httpRoutes` map following the same pattern as `ingress.yaml`:
 Simpler than `ingressDefaults` — no TLS, no ingressClassName.
 
 **`ks-universal.autoHttpRoute`** — generates HTTPRoute from deployment config:
-- Called from `deployment.yaml` when `autoCreateHttpRoute: true`
+- Called from `deployment.yaml` via a new conditional block (same pattern as existing `autoCreateIngress` block) when `autoCreateHttpRoute: true`
 - BackendRef name = deployment name
 - BackendRef port = first port from first container (same logic as autoIngress: collects all ports across containers, takes first). Falls back to 80 if no ports defined.
 - Hostnames from `httpRoute.hostnames`, or deployment name as subdomain + globalDomain
