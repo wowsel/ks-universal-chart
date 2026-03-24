@@ -819,6 +819,71 @@ Job validation
 {{- end -}}
 
 {{/*
+HTTPRoute validation
+*/}}
+{{- define "ks-universal.validateHttpRoute" -}}
+  {{- $name := .name -}}
+  {{- $config := .config -}}
+  {{- $root := .root -}}
+  {{- $generic := $root.Values.generic | default dict -}}
+  {{- $httpRoutesGeneral := index $generic "httpRoutesGeneral" | default dict -}}
+  {{- $ingressesGeneral := $generic.ingressesGeneral | default dict -}}
+  {{- $globalDomain := $ingressesGeneral.domain | default "" | trim -}}
+
+  {{- if not $config -}}
+    {{ fail (printf "HTTPRoute %s: configuration must not be empty" $name) }}
+  {{- end }}
+
+  {{- /* parentRefs required: per-route or global */ -}}
+  {{- if and (not $config.parentRefs) (not $httpRoutesGeneral.parentRefs) -}}
+    {{ fail (printf "HTTPRoute %s: parentRefs must be specified either per-route or in generic.httpRoutesGeneral" $name) }}
+  {{- end }}
+
+  {{- /* hostnames required */ -}}
+  {{- if not $config.hostnames -}}
+    {{ fail (printf "HTTPRoute %s: hostnames is required" $name) }}
+  {{- end }}
+
+  {{- /* Validate each hostname */ -}}
+  {{- range $hostname := $config.hostnames }}
+    {{- $computedHost := include "ks-universal.computedIngressHost" (dict "host" $hostname.host "subdomain" $hostname.subdomain "globalDomain" $globalDomain) | trim }}
+    {{- if not $computedHost }}
+      {{ fail (printf "HTTPRoute %s: computed hostname is empty" $name) }}
+    {{- end }}
+  {{- end }}
+
+  {{- /* rules required */ -}}
+  {{- if not $config.rules -}}
+    {{ fail (printf "HTTPRoute %s: at least one rule is required" $name) }}
+  {{- end }}
+
+  {{- /* Validate rules */ -}}
+  {{- range $i, $rule := $config.rules }}
+    {{- if not $rule.matches -}}
+      {{ fail (printf "HTTPRoute %s: rule[%d] must have at least one match" $name $i) }}
+    {{- end }}
+    {{- range $j, $match := $rule.matches }}
+      {{- if $match.path }}
+        {{- if $match.path.type }}
+          {{- $validTypes := list "PathPrefix" "Exact" "RegularExpression" }}
+          {{- if not (has $match.path.type $validTypes) }}
+            {{ fail (printf "HTTPRoute %s: rule[%d].match[%d].path.type must be PathPrefix, Exact, or RegularExpression, got '%s'" $name $i $j $match.path.type) }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+      {{- range $h, $header := $match.headers }}
+        {{- if $header.type }}
+          {{- $validHeaderTypes := list "Exact" "RegularExpression" }}
+          {{- if not (has $header.type $validHeaderTypes) }}
+            {{ fail (printf "HTTPRoute %s: rule[%d].match[%d].header[%d].type must be Exact or RegularExpression, got '%s'" $name $i $j $h $header.type) }}
+          {{- end }}
+        {{- end }}
+      {{- end }}
+    {{- end }}
+  {{- end }}
+{{- end }}
+
+{{/*
 Main validation entrypoint
 */}}
 {{- define "ks-universal.validate" -}}
@@ -890,6 +955,13 @@ Main validation entrypoint
 {{- if and $root.Values.ingresses (kindIs "map" $root.Values.ingresses.ingresses) -}}
 {{- range $ingressName, $ingressConfig := $root.Values.ingresses.ingresses -}}
 {{- include "ks-universal.validateIngress" (dict "name" $ingressName "config" $ingressConfig "root" $) }}
+{{- end -}}
+{{- end -}}
+
+{{/* HTTPRoutes validation */}}
+{{- if $root.Values.httpRoutes -}}
+{{- range $routeName, $routeConfig := $root.Values.httpRoutes -}}
+{{- include "ks-universal.validateHttpRoute" (dict "name" $routeName "config" $routeConfig "root" $root) -}}
 {{- end -}}
 {{- end -}}
 {{- end -}}

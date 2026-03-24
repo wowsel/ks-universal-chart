@@ -267,3 +267,61 @@ tests:
       - equal:
           path: metadata.labels.app-label
           value: "custom"
+
+  - it: should fail when parentRefs missing everywhere
+    set:
+      generic:
+        ingressesGeneral:
+          domain: "example.org"
+      httpRoutes:
+        my-app:
+          hostnames:
+            - subdomain: my-app
+          rules:
+            - matches:
+                - path:
+                    type: PathPrefix
+                    value: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "HTTPRoute my-app: parentRefs must be specified either per-route or in generic.httpRoutesGeneral"
+
+  - it: should fail when hostnames empty
+    set:
+      generic:
+        httpRoutesGeneral:
+          parentRefs:
+            - name: gw
+              namespace: gw-ns
+      httpRoutes:
+        my-app:
+          rules:
+            - matches:
+                - path:
+                    type: PathPrefix
+                    value: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "HTTPRoute my-app: hostnames is required"
+
+  - it: should fail when invalid path type
+    set:
+      generic:
+        ingressesGeneral:
+          domain: "example.org"
+        httpRoutesGeneral:
+          parentRefs:
+            - name: gw
+              namespace: gw-ns
+      httpRoutes:
+        my-app:
+          hostnames:
+            - subdomain: my-app
+          rules:
+            - matches:
+                - path:
+                    type: Invalid
+                    value: /
+    asserts:
+      - failedTemplate:
+          errorMessage: "HTTPRoute my-app: rule[0].match[0].path.type must be PathPrefix, Exact, or RegularExpression, got 'Invalid'"
