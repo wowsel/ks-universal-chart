@@ -194,6 +194,24 @@ Service labels
   {{- toYaml $result }}
 {{- end }}
 
+{{- define "ks-universal.httpRouteDefaults" -}}
+  {{- $httpRoute := .httpRoute | default dict }}
+  {{- $general := .general | default dict }}
+  {{- $result := deepCopy $httpRoute }}
+
+  {{- /* Inherit global annotations (merge, resource-level wins) */ -}}
+  {{- if $general.annotations }}
+    {{- $result = merge $result (dict "annotations" (merge (default dict $httpRoute.annotations) $general.annotations)) }}
+  {{- end }}
+
+  {{- /* parentRefs: route-level fully replaces global, not a merge */ -}}
+  {{- if and (not $httpRoute.parentRefs) $general.parentRefs }}
+    {{- $_ := set $result "parentRefs" $general.parentRefs }}
+  {{- end }}
+
+  {{- toYaml $result }}
+{{- end }}
+
 {{- define "ks-universal.hasMetricsPort" -}}
 {{- $containers := .containers }}
 {{- $hasMetricsPort := false }}
