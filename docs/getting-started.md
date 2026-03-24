@@ -171,6 +171,29 @@ deployments:
             containerPort: 8080
 ```
 
+### Web Application (Gateway API)
+```yaml
+deployments:
+  web-app:
+    autoCreateService: true
+    autoCreateHttpRoute: true
+    containers:
+      main:
+        image: web-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+    httpRoute:
+      hostnames:
+        - subdomain: web-app
+      rules:
+        - matches:
+            - path:
+                type: PathPrefix
+                value: /
+```
+
 ### API Service
 ```yaml
 deployments:

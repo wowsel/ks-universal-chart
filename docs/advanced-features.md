@@ -12,6 +12,7 @@ This guide covers advanced features and patterns available in the ks-universal c
   - [Network Policies](#network-policies)
 - [Resource Management](#resource-management)
 - [Advanced Networking](#advanced-networking)
+  - [HTTPRoute (Gateway API)](#httproute-gateway-api)
 
 ## 🔄 Values Inheritance
 
@@ -363,6 +364,65 @@ deployments:
               pathType: Prefix
             - path: /v2(/|$)(.*)
               pathType: Prefix
+```
+</details>
+
+### HTTPRoute (Gateway API)
+
+<details>
+<summary>HTTPRoute Configuration</summary>
+
+Gateway API is the next-generation routing API for Kubernetes. Use HTTPRoute instead of Ingress when your cluster has a Gateway API controller (e.g., Cilium, Istio, Envoy Gateway).
+
+```yaml
+# Standalone HTTPRoute
+generic:
+  ingressesGeneral:
+    domain: example.com
+  httpRoutesGeneral:
+    parentRefs:
+      - name: shared-gateway
+        namespace: gateway-system
+
+httpRoutes:
+  api:
+    hostnames:
+      - subdomain: api
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /v1
+        backendRefs:
+          - name: api-v1
+            port: 8080
+            weight: 90
+          - name: api-v2
+            port: 8080
+            weight: 10
+```
+
+```yaml
+# Auto-created HTTPRoute from deployment
+deployments:
+  my-app:
+    autoCreateService: true
+    autoCreateHttpRoute: true
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+    httpRoute:
+      hostnames:
+        - subdomain: my-app
+      rules:
+        - matches:
+            - path:
+                type: PathPrefix
+                value: /
 ```
 </details>
 

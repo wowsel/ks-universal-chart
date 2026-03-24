@@ -22,7 +22,7 @@
 
 ## ✨ Features
 
-- 📦 **Resource Types**: Deployments, CronJobs, Jobs, Services, Ingresses, ConfigMaps/Secrets, PVCs
+- 📦 **Resource Types**: Deployments, CronJobs, Jobs, Services, Ingresses, HTTPRoutes (Gateway API), ConfigMaps/Secrets, PVCs
 - 🤖 **Auto-creation**: Automatic creation of associated resources
 - 📊 **Monitoring**: Native Prometheus support via ServiceMonitors
 - 🔒 **Security**: SSL certificate management via cert-manager
@@ -88,6 +88,7 @@ deploymentsGeneral:
 generic:
   extraImagePullSecrets: []  # Global image pull secrets for all deployments, jobs, and cronjobs
   ingressesGeneral: {}       # Global ingress configurations
+  httpRoutesGeneral: {}      # Global HTTPRoute (Gateway API) configurations
   serviceMonitorGeneral: {}  # Global ServiceMonitor settings
   dexAuthenticatorGeneral: {}  # Global DexAuthenticator settings
 
@@ -116,6 +117,7 @@ deployments:
     # Deployment features
     autoCreateService: false        # Create Service automatically
     autoCreateIngress: false        # Create Ingress automatically
+    autoCreateHttpRoute: false      # Create HTTPRoute (Gateway API) automatically
     autoCreateServiceMonitor: false # Create ServiceMonitor
     autoCreatePdb: false           # Create PDB
     autoCreateCertificate: false   # Create Certificate
@@ -125,6 +127,7 @@ deployments:
     # Additional configurations
     serviceType: ClusterIP    # Service type when autoCreateService is true
     ingress: {}              # Ingress configuration
+    httpRoute: {}            # HTTPRoute configuration (Gateway API)
     certificate: {}          # Certificate configuration
     serviceMonitor: {}       # ServiceMonitor configuration
     pdbConfig: {}           # PDB configuration
@@ -205,6 +208,15 @@ ingresses:
     ingressClassName: ""
     tls: []
     hosts: []
+
+# Standalone HTTPRoutes (Gateway API)
+httpRoutes:
+  route-name:
+    parentRefs: []           # Gateway references (or set globally)
+    hostnames: []            # Hostnames (host or subdomain)
+    rules: []                # Routing rules with matches and backendRefs
+    annotations: {}
+    labels: {}
 ```
 </details>
 
@@ -218,6 +230,7 @@ The chart can automatically create associated resources based on your configurat
 |---------|-------------|------------|
 | Service | Creates Service based on container ports | `autoCreateService: true` |
 | Ingress | Creates Ingress with optional SSL | `autoCreateIngress: true` |
+| HTTPRoute | Creates Gateway API HTTPRoute | `autoCreateHttpRoute: true` |
 | Certificate | Manages SSL certificates via cert-manager | `autoCreateCertificate: true` |
 | DexAuthenticator | Global authentication via Dex (Deckhouse only) | `generic.dexAuthenticatorGeneral.enabled: true` and `ingress.dexAuthenticator.enabled: true` |
 | ServiceMonitor | Creates Prometheus ServiceMonitor | `autoCreateServiceMonitor: true` |

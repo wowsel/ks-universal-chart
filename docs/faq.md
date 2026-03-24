@@ -104,6 +104,43 @@ deployments:
 </details>
 
 <details>
+<summary>How do I expose my application via Gateway API (HTTPRoute)?</summary>
+
+Use autoCreateHttpRoute with a Gateway API controller (Cilium, Istio, Envoy Gateway):
+```yaml
+generic:
+  ingressesGeneral:
+    domain: example.com
+  httpRoutesGeneral:
+    parentRefs:
+      - name: shared-gateway
+        namespace: gateway-system
+
+deployments:
+  my-app:
+    autoCreateService: true
+    autoCreateHttpRoute: true
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+    httpRoute:
+      hostnames:
+        - subdomain: my-app
+      rules:
+        - matches:
+            - path:
+                type: PathPrefix
+                value: /
+```
+
+HTTPRoute is the modern replacement for Ingress. TLS is handled at the Gateway level, not on the HTTPRoute.
+</details>
+
+<details>
 <summary>How do I configure SSL/TLS for my ingress?</summary>
 
 Enable autoCreateCertificate and configure certificate settings:

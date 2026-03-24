@@ -1,0 +1,102 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "title": "KS Universal Chart values",
+  "type": "object",
+  "additionalProperties": true,
+  "properties": {
+    "deploymentsGeneral": {
+      "type": "object",
+      "description": "Global defaults for deployments (securityContext, nodeSelector, probes, strategy, autoCreateSoftAntiAffinity, etc)",
+      "additionalProperties": true
+    },
+    "generic": {
+      "type": "object",
+      "description": "Global generic settings (ingressesGeneral, httpRoutesGeneral, serviceMonitorGeneral, dexAuthenticatorGeneral, extraImagePullSecrets)",
+      "additionalProperties": true
+    },
+    "secretRefs": {
+      "type": "object",
+      "description": "Reusable secret reference groups included by containers via secretRefs",
+      "additionalProperties": true
+    },
+    "deployments": {
+      "type": "object",
+      "description": "Deployment definitions keyed by name",
+      "additionalProperties": true
+    },
+    "services": {
+      "type": "object",
+      "description": "Standalone Service resources keyed by name",
+      "additionalProperties": true
+    },
+    "ingresses": {
+      "type": "object",
+      "description": "Standalone Ingress resources keyed by name",
+      "additionalProperties": true
+    },
+    "httpRoutes": {
+      "type": "object",
+      "description": "Standalone HTTPRoute (Gateway API) resources",
+      "default": {},
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "parentRefs": {
+            "type": "array",
+            "description": "Gateway references (overrides global httpRoutesGeneral.parentRefs)",
+            "items": {
+              "type": "object"
+            }
+          },
+          "hostnames": {
+            "type": "array",
+            "description": "Hostnames (each with host or subdomain)",
+            "items": {
+              "type": "object"
+            }
+          },
+          "rules": {
+            "type": "array",
+            "description": "Routing rules with matches and backendRefs",
+            "items": {
+              "type": "object"
+            }
+          },
+          "annotations": {
+            "type": "object",
+            "description": "HTTPRoute annotations"
+          },
+          "labels": {
+            "type": "object",
+            "description": "HTTPRoute labels"
+          }
+        }
+      }
+    },
+    "configs": {
+      "type": "object",
+      "description": "ConfigMaps and Secrets to create (type: configMap|secret)",
+      "additionalProperties": true
+    },
+    "persistentVolumeClaims": {
+      "type": "object",
+      "description": "PersistentVolumeClaims keyed by name",
+      "additionalProperties": true
+    },
+    "cronJobs": {
+      "type": "object",
+      "description": "CronJobs keyed by name",
+      "additionalProperties": true
+    },
+    "jobs": {
+      "type": "object",
+      "description": "Jobs keyed by name",
+      "additionalProperties": true
+    },
+    "hpas": {
+      "type": "object",
+      "description": "HorizontalPodAutoscalers keyed by name",
+      "additionalProperties": true
+    }
+  }
+}

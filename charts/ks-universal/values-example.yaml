@@ -433,3 +433,92 @@ secure-app:
 # DexAuthenticator enablement - will use the global DexAuthenticator
 dexAuthenticator:
   enabled: true
+
+# =============================================
+# HTTPRoutes (Gateway API)
+# =============================================
+# Modern alternative to Ingress using Gateway API.
+# Requires a Gateway API controller (Cilium, Istio, Envoy Gateway, etc.)
+
+# Global HTTPRoute settings
+# generic:
+#   httpRoutesGeneral:
+#     parentRefs:
+#       - name: shared-gateway
+#         namespace: gateway-system
+#     annotations:
+#       example.com/managed-by: "platform-team"
+
+# Standalone HTTPRoute
+# httpRoutes:
+#   api-route:
+#     # parentRefs override global (optional)
+#     # parentRefs:
+#     #   - name: custom-gateway
+#     #     namespace: custom-ns
+#     hostnames:
+#       - subdomain: api          # Uses generic.ingressesGeneral.domain
+#       # - host: api.example.com  # Or explicit full domain
+#     rules:
+#       - matches:
+#           - path:
+#               type: PathPrefix   # PathPrefix | Exact | RegularExpression
+#               value: /
+#         backendRefs:
+#           - name: api-service
+#             port: 8080
+#
+#   # Traffic splitting (canary)
+#   canary-route:
+#     hostnames:
+#       - subdomain: app
+#     rules:
+#       - matches:
+#           - path:
+#               type: PathPrefix
+#               value: /
+#         backendRefs:
+#           - name: app-stable
+#             port: 8080
+#             weight: 90
+#           - name: app-canary
+#             port: 8080
+#             weight: 10
+#
+#   # Header-based routing
+#   header-route:
+#     hostnames:
+#       - subdomain: app
+#     rules:
+#       - matches:
+#           - path:
+#               type: PathPrefix
+#               value: /api
+#             headers:
+#               - name: x-env
+#                 value: staging
+#                 type: Exact
+#         backendRefs:
+#           - name: staging-backend
+#             port: 8080
+
+# Auto-create HTTPRoute from deployment:
+# deployments:
+#   my-app:
+#     autoCreateService: true
+#     autoCreateHttpRoute: true
+#     containers:
+#       main:
+#         image: my-app
+#         imageTag: v1.0.0
+#         ports:
+#           http:
+#             containerPort: 8080
+#     httpRoute:
+#       hostnames:
+#         - subdomain: my-app
+#       rules:
+#         - matches:
+#             - path:
+#                 type: PathPrefix
+#                 value: /

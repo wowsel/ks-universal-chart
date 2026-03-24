@@ -6,6 +6,7 @@ This guide explains the automatic resource creation capabilities of the ks-unive
 - [Available Features](#available-features)
 - [Service Auto-creation](#service-auto-creation)
 - [Ingress Auto-creation](#ingress-auto-creation)
+- [HTTPRoute Auto-creation (Gateway API)](#httproute-auto-creation-gateway-api)
 - [Certificate Auto-creation](#certificate-auto-creation)
 - [DexAuthenticator Integration](#dexauthenticator-integration)
 - [ServiceMonitor Auto-creation](#servicemonitor-auto-creation)
@@ -20,6 +21,7 @@ This guide explains the automatic resource creation capabilities of the ks-unive
 |---------|------|-------------|
 | Service | `autoCreateService` | Creates Kubernetes Service |
 | Ingress | `autoCreateIngress` | Creates Ingress resource |
+| HTTPRoute | `autoCreateHttpRoute` | Creates Gateway API HTTPRoute |
 | Certificate | `autoCreateCertificate` | Creates cert-manager Certificate |
 | DexAuthenticator | `generic.dexAuthenticatorGeneral.enabled` | Creates Deckhouse DexAuthenticator for auth |
 | ServiceMonitor | `autoCreateServiceMonitor` | Creates Prometheus ServiceMonitor |
@@ -110,6 +112,71 @@ generic:
     ingressClassName: nginx
     annotations:
       nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+```
+</details>
+
+## 🌐 HTTPRoute Auto-creation (Gateway API)
+
+<details>
+<summary>Basic HTTPRoute Configuration</summary>
+
+```yaml
+generic:
+  ingressesGeneral:
+    domain: example.com
+  httpRoutesGeneral:
+    parentRefs:
+      - name: shared-gateway
+        namespace: gateway-system
+
+deployments:
+  my-app:
+    autoCreateService: true
+    autoCreateHttpRoute: true
+    containers:
+      main:
+        image: my-app
+        imageTag: v1.0.0
+        ports:
+          http:
+            containerPort: 8080
+    httpRoute:
+      hostnames:
+        - subdomain: my-app
+      rules:
+        - matches:
+            - path:
+                type: PathPrefix
+                value: /
+```
+
+### Features
+- Automatic parentRefs inheritance from `generic.httpRoutesGeneral`
+- Hostname resolution via subdomain + global domain (same as Ingress)
+- Backend port auto-detection from container ports
+- Traffic splitting with weighted backendRefs
+- Header and query parameter matching
+</details>
+
+<details>
+<summary>Standalone HTTPRoute Configuration</summary>
+
+```yaml
+httpRoutes:
+  api-route:
+    parentRefs:
+      - name: my-gateway
+        namespace: gateway-ns
+    hostnames:
+      - host: api.example.com
+    rules:
+      - matches:
+          - path:
+              type: PathPrefix
+              value: /api
+        backendRefs:
+          - name: api-service
+            port: 8080
 ```
 </details>
 
@@ -359,6 +426,12 @@ affinity:
 - Always enable `autoCreateService` with `autoCreateIngress`
 - Use `servicePort` when needed
 - Configure global ingress settings
+
+### HTTPRoute (Gateway API)
+- Use `autoCreateHttpRoute` as a modern alternative to `autoCreateIngress`
+- Configure `generic.httpRoutesGeneral.parentRefs` for shared Gateway reference
+- Hostname resolution uses the same `generic.ingressesGeneral.domain` as Ingress
+- Use weighted `backendRefs` for traffic splitting (canary deployments)
 
 ### Certificates
 - Ensure cert-manager is installed
