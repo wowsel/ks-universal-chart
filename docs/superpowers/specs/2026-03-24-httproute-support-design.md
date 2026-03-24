@@ -68,6 +68,10 @@ generic:
         namespace: gateway-system
     annotations: {}
     labels: {}
+  # httpRoutesGeneral does NOT have its own domain field.
+  # Hostname resolution reuses generic.ingressesGeneral.domain as globalDomain.
+  ingressesGeneral:
+    domain: example.com    # shared by both Ingress and HTTPRoute hostnames
 ```
 
 ### Auto-create from Deployments
@@ -103,7 +107,7 @@ Iterates over `httpRoutes` map following the same pattern as `ingress.yaml`:
 ### New helpers in `_helpers.tpl`
 
 **`ks-universal.httpRouteDefaults`** — merges global defaults into per-route config:
-- parentRefs (route-level takes priority over global)
+- parentRefs (route-level fully replaces global, not a merge)
 - annotations (merge, resource-level wins)
 - labels (merge, resource-level wins)
 
@@ -112,7 +116,7 @@ Simpler than `ingressDefaults` — no TLS, no ingressClassName.
 **`ks-universal.autoHttpRoute`** — generates HTTPRoute from deployment config:
 - Called from `deployment.yaml` when `autoCreateHttpRoute: true`
 - BackendRef name = deployment name
-- BackendRef port = first http port from container spec
+- BackendRef port = first port from first container (same logic as autoIngress: collects all ports across containers, takes first). Falls back to 80 if no ports defined.
 - Hostnames from `httpRoute.hostnames`, or deployment name as subdomain + globalDomain
 
 ### Additions to `_validation.tpl`
@@ -134,7 +138,7 @@ Simpler than `ingressDefaults` — no TLS, no ingressClassName.
 - `backendRefs` not specified in rule: auto `name: <httproute-name>`, `port: 80`
 - Single backendRef without `name`: inherits httproute name
 - `weight` omitted: defaults to 1 (Kubernetes default)
-- `hostnames` not specified but `httpRoutesGeneral.domain` exists: uses globalDomain
+- `hostnames` not specified but `ingressesGeneral.domain` exists: uses globalDomain (shared with Ingress)
 - Auto-create without explicit `httpRoute.hostnames`: deployment name as subdomain + globalDomain
 
 ## Tests
